@@ -1,0 +1,5 @@
+---
+profile: edgecore_ssw2ac2600
+target: ipq806x
+subtarget: generic
+description: Build image for the Edgecore SSW2AC2600
