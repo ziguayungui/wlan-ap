@@ -1,0 +1,112 @@
+From 29fbbf1ce96b36c74071ecd86fb2f855ec9ca39f Mon Sep 17 00:00:00 2001
+From: Chaitanya Godavarthi <chaitanya.kiran@netexperience.com>
+Date: Tue, 18 May 2021 22:47:59 -0400
+Subject: [PATCH] eap102: Add sysupgrade for dual boot
+
+Signed-off-by: Chaitanya Godavarthi <chaitanya.kiran@netexperience.com>
+---
+ package/base-files/files/lib/upgrade/nand.sh   | 10 ++++++----
+ .../ipq807x/base-files/lib/upgrade/platform.sh | 18 +++++++++++++++++-
+ target/linux/ipq807x/image/ipq807x.mk          |  2 +-
+ 3 files changed, 24 insertions(+), 6 deletions(-)
+
+diff --git a/package/base-files/files/lib/upgrade/nand.sh b/package/base-files/files/lib/upgrade/nand.sh
+index 41263c64a9..d6cb95e357 100644
+--- a/package/base-files/files/lib/upgrade/nand.sh
++++ b/package/base-files/files/lib/upgrade/nand.sh
+@@ -13,6 +13,8 @@ CI_UBIPART="${CI_UBIPART:-ubi}"
+ # 'rootfs' partition on NAND contains the rootfs
+ CI_ROOTPART="${CI_ROOTPART:-rootfs}"
+ 
++CI_ROOTDATAPART="${CI_ROOTDATAPART:-rootfs_data}"
++
+ # ipq807x qsdk kernel misbehaves
+ CI_IPQ807X=0
+ 
+@@ -103,7 +105,7 @@ identify_tar() {
+ nand_restore_config() {
+ 	sync
+ 	local ubidev=$( nand_find_ubi $CI_UBIPART )
+-	local ubivol="$( nand_find_volume $ubidev rootfs_data )"
++	local ubivol="$( nand_find_volume $ubidev $CI_ROOTDATAPART )"
+ 	[ ! "$ubivol" ] &&
+ 		ubivol="$( nand_find_volume $ubidev $CI_ROOTPART )"
+ 	mkdir /tmp/new_root
+@@ -152,7 +154,7 @@ nand_upgrade_prepare_ubi() {
+ 
+ 	local kern_ubivol="$( nand_find_volume $ubidev $CI_KERNPART )"
+ 	local root_ubivol="$( nand_find_volume $ubidev $CI_ROOTPART )"
+-	local data_ubivol="$( nand_find_volume $ubidev rootfs_data )"
++	local data_ubivol="$( nand_find_volume $ubidev $CI_ROOTDATAPART )"
+ 
+ 	# remove ubiblock device of rootfs
+ 	local root_ubiblk="ubiblock${root_ubivol:3}"
+@@ -167,7 +169,7 @@ nand_upgrade_prepare_ubi() {
+ 	# kill volumes
+ 	[ "$kern_ubivol" ] && ubirmvol /dev/$ubidev -N $CI_KERNPART || true
+ 	[ "$root_ubivol" ] && ubirmvol /dev/$ubidev -N $CI_ROOTPART || true
+-	[ "$data_ubivol" ] && ubirmvol /dev/$ubidev -N rootfs_data || true
++	[ "$data_ubivol" ] && ubirmvol /dev/$ubidev -N $CI_ROOTDATAPART || true
+ 
+ 	# update kernel
+ 	if [ "$has_kernel" = "1" ]; then
+@@ -191,7 +193,7 @@ nand_upgrade_prepare_ubi() {
+ 
+ 	# create rootfs_data for non-ubifs rootfs
+ 	if [ "$rootfs_type" != "ubifs" ]; then
+-		if ! ubimkvol /dev/$ubidev -N rootfs_data -m; then
++		if ! ubimkvol /dev/$ubidev -N $CI_ROOTDATAPART -m; then
+ 			echo "cannot initialize rootfs_data volume"
+ 			return 1
+ 		fi
+diff --git a/target/linux/ipq807x/base-files/lib/upgrade/platform.sh b/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
+index 82f01e8a99..2325981e5d 100755
+--- a/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
++++ b/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
+@@ -51,7 +51,6 @@ platform_do_upgrade() {
+ 		;;
+ 	cig,wf188n|\
+ 	cig,wf194c|\
+-	edgecore,eap102|\
+ 	qcom,ipq6018-cp01|\
+ 	qcom,ipq807x-hk01|\
+ 	sercomm,wallaby|\
+@@ -72,5 +71,22 @@ platform_do_upgrade() {
+ #		CI_UBIPART="rootfs1"
+ 		nand_upgrade_tar "$1"
+ 		;;
++	edgecore,eap102)
++		part="$(awk -F 'ubi.mtd=' '{printf $2}' /proc/cmdline | sed -e 's/ .*$//')"
++		if [ "$part" = "rootfs1" ]; then
++			fw_setenv active 2 || exit 1
++			CI_UBIPART="rootfs2"
++			CI_KERNPART="kernel"
++			CI_ROOTPART="ubi_rootfs"
++			CI_ROOTDATAPART="rootfs_data"
++		else
++			fw_setenv active 1 || exit 1
++			CI_UBIPART="rootfs1"
++			CI_KERNPART="kernel"
++			CI_ROOTPART="ubi_rootfs"
++			CI_ROOTDATAPART="rootfs_data"
++		fi
++
++		nand_upgrade_tar "$1"
+ 	esac
+ }
+diff --git a/target/linux/ipq807x/image/ipq807x.mk b/target/linux/ipq807x/image/ipq807x.mk
+index 7081769407..68ffc2fd42 100644
+--- a/target/linux/ipq807x/image/ipq807x.mk
++++ b/target/linux/ipq807x/image/ipq807x.mk
+@@ -41,7 +41,7 @@ define Device/edgecore_eap102
+   DEVICE_DTS := qcom-ipq807x-eap102
+   DEVICE_DTS_CONFIG=config@ac02
+   SUPPORTED_DEVICES := edgecore,eap102
+-  DEVICE_PACKAGES := ath11k-wifi-edgecore-eap102 kmod-usb3 kmod-usb2
++  DEVICE_PACKAGES := ath11k-wifi-edgecore-eap102 kmod-usb3 kmod-usb2 uboot-envtools
+ endef
+ TARGET_DEVICES += edgecore_eap102
+ define Device/tplink_ex227
+-- 
+2.25.1
+

@@ -23,7 +23,6 @@ set_fw_version() {
 		;;
 	esac
 
-
 	uci set system.tip.inactivefw="${INACTIVE_FW_VERSION}"
 	uci commit system
 }
@@ -35,11 +34,11 @@ start() {
 		set_fw_version "${cur_boot_part}"
 		;;
 	edgecore,ecw5410 |\
-	edgecore,eap101)
+	edgecore,eap101 |\
+	edgecore,eap102)
 		cur_boot_part="$(/usr/sbin/fw_printenv -n active)"
 		set_fw_version "${cur_boot_part}"
 		;;
-
 	*)
 		;;
 	esac

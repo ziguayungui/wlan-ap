@@ -86,7 +86,8 @@ linksys,ea8300)
 	reboot
 	;;
 edgecore,ecw5410 |\
-edgecore,eap101)
+edgecore,eap101 |\
+edgecore,eap102)
 	ecw5410_switch_bank
 	reboot
 	;;

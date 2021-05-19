@@ -40,7 +40,8 @@ FW_VERSION=`sed -n 's/FW_IMAGE_ACTIVE:\(.*\)/\1/p' < /usr/opensync/.versions`
 case "$(board_name)" in
 linksys,ea8300 |\
 edgecore,ecw5410 |\
-edgecore,eap101)
+edgecore,eap101 |\
+edgecore,eap102)
 	;;
 *)
 	uci set system.tip.inactivefw="${FW_VERSION}"
