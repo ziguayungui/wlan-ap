@@ -1,0 +1,5 @@
+---
+profile: edgecore_spw2ac1200
+target: ipq40xx
+subtarget: generic
+description: Build image for the Edgecore SPW2AC1200

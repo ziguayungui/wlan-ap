@@ -33,10 +33,10 @@ First we need to clone and setup our tree. This will result in an openwrt-20.x/.
 ```
 python3 setup.py --setup --20x
 ```
-Next we need to select the profile and base package selection. This setup will install the feeds, packages and generate the .config file. The available profiles are ap2220, ea8300, ecw5211, ecw5410. It is no longer required to add the wifi profile. Board profiles will now include their specific wifi flavour profile automatically.
+Next we need to select the profile and base package selection. This setup will install the feeds, packages and generate the .config file. The available profiles are ap2220, ea8300, ecw5211, spw2ac1200, ecw5410. It is no longer required to add the wifi profile. Board profiles will now include their specific wifi flavour profile automatically.
 ```
 cd openwrt
-./scripts/gen_config.py ap2220 wlan-ap
+./scripts/gen_config.py spw2ac1200 wlan-ap
 ```
 Finally we can build the tree.
 ```
@@ -48,7 +48,7 @@ Builds for different profiles can co-exist in the same tree. Switching is done b
 
 Start by installing docker.io on your host system and ensuring that you can run an unprivileged container.
 Once this is done edit the Dockerfile and choose the Ubuntu flavour. This might depend on your host installation.
-Then simple call (available targets are AP2220, EA8300, ECW5211, ECW5410)
+Then simple call (available targets are AP2220, EA8300, ECW5211, SPW2AC1200, ECW5410)
 ```
-TARGET=AP2200 make -j 8
+TARGET=SPW2AC1200 make -j 8
 ```
