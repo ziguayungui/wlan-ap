@@ -1,0 +1,99 @@
+From 719949e3873f25f8a3327440e311e267ef78e146 Mon Sep 17 00:00:00 2001
+From: "peter.chiu" <peter.chiu@4ipnet.com>
+Date: Thu, 20 May 2021 18:10:26 +0800
+Subject: [PATCH] ECW5211 dual image support
+
+---
+ package/base-files/files/lib/upgrade/stage2                    |  6 +++---
+ target/linux/ipq40xx/base-files/etc/init.d/bootcount           |  3 +++
+ target/linux/ipq40xx/base-files/lib/upgrade/platform.sh        | 10 ++++++++++
+ .../files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts      |  1 -
+ 4 files changed, 16 insertions(+), 4 deletions(-)
+ mode change 100644 => 100755 target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
+ mode change 100644 => 100755 target/linux/ipq40xx/files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts
+
+diff --git a/package/base-files/files/lib/upgrade/stage2 b/package/base-files/files/lib/upgrade/stage2
+index 41a3b2a..d573e10 100755
+--- a/package/base-files/files/lib/upgrade/stage2
++++ b/package/base-files/files/lib/upgrade/stage2
+@@ -18,7 +18,7 @@ include /lib/upgrade
+ 
+ supivot() { # <new_root> <old_root>
+ 	/bin/mount | grep "on $1 type" 2>&- 1>&- || /bin/mount -o bind $1 $1
+-	mkdir -p $1$2 $1/proc $1/sys $1/dev $1/tmp $1/overlay && \
++	mkdir -p $1$2 $1/proc $1/sys $1/dev $1/tmp $1/overlay $1/var/lock && \
+ 	/bin/mount -o noatime,move /proc $1/proc && \
+ 	pivot_root $1 $1$2 || {
+ 		/bin/umount -l $1 $1
+@@ -39,7 +39,7 @@ switch_to_ramfs() {
+ 		md5sum hexdump cat zcat bzcat dd tar			\
+ 		ls basename find cp mv rm mkdir rmdir mknod touch chmod \
+ 		'[' printf wc grep awk sed cut				\
+-		mtd partx losetup mkfs.ext4				\
++		mtd partx losetup mkfs.ext4 fw_setenv free		\
+ 		ubiupdatevol ubiattach ubiblock ubiformat		\
+ 		ubidetach ubirsvol ubirmvol ubimkvol			\
+ 		snapshot snapshot_tool					\
+@@ -48,7 +48,7 @@ switch_to_ramfs() {
+ 		local file="$(which "$binary" 2>/dev/null)"
+ 		[ -n "$file" ] && install_bin "$file"
+ 	done
+-	install_file /etc/resolv.conf /lib/*.sh /lib/functions/*.sh /lib/upgrade/*.sh /lib/upgrade/do_stage2 /usr/share/libubox/jshn.sh $RAMFS_COPY_DATA
++	install_file /etc/fw_env.config /etc/resolv.conf /lib/*.sh /lib/functions/*.sh /lib/upgrade/*.sh /lib/upgrade/do_stage2 /usr/share/libubox/jshn.sh $RAMFS_COPY_DATA
+ 
+ 	[ -L "/lib64" ] && ln -s /lib $RAM_ROOT/lib64
+ 
+diff --git a/target/linux/ipq40xx/base-files/etc/init.d/bootcount b/target/linux/ipq40xx/base-files/etc/init.d/bootcount
+index f2d76f1..7cddc9d 100755
+--- a/target/linux/ipq40xx/base-files/etc/init.d/bootcount
++++ b/target/linux/ipq40xx/base-files/etc/init.d/bootcount
+@@ -10,6 +10,9 @@ start() {
+ 		[ -n "$(fw_printenv bootcount changed 2>/dev/null)" ] &&\
+ 			echo -e "bootcount\nchanged\n" | /usr/sbin/fw_setenv -s -
+ 		;;
++	edgecore,ecw5211)
++		fw_setenv bootcount 0
++		;;
+ 	linksys,ea6350v3|\
+ 	linksys,ea8300)
+ 		mtd resetbc s_env || true
+diff --git a/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh b/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
+old mode 100644
+new mode 100755
+index 8200b76..e9f5317
+--- a/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
++++ b/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
+@@ -91,6 +91,16 @@ platform_do_upgrade() {
+ 
+ platform_nand_pre_upgrade() {
+ 	case "$(board_name)" in
++	edgecore,ecw5211)
++		part="$(awk -F 'ubi.mtd=' '{printf $2}' /proc/cmdline | sed -e 's/ .*$//')"
++		if [ "$part" = "rootfs1" ]; then
++			fw_setenv active 2 || exit 1
++			CI_UBIPART="rootfs2"
++		elif  [ "$part" = "rootfs2" ]; then
++			fw_setenv active 1 || exit 1
++			CI_UBIPART="rootfs1"
++		fi
++		;;
+ 	alfa-network,ap120c-ac)
+ 		part="$(awk -F 'ubi.mtd=' '{printf $2}' /proc/cmdline | sed -e 's/ .*$//')"
+ 		if [ "$part" = "rootfs1" ]; then
+diff --git a/target/linux/ipq40xx/files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts b/target/linux/ipq40xx/files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts
+old mode 100644
+new mode 100755
+index 6c9b31b..3cfa5f4
+--- a/target/linux/ipq40xx/files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts
++++ b/target/linux/ipq40xx/files-4.14/arch/arm/boot/dts/qcom-ipq4018-ecw5211.dts
+@@ -226,7 +226,6 @@
+ 			partition@e0000 {
+ 				label = "0:APPSBLENV"; /* uboot env*/
+ 				reg = <0x000e0000 0x00010000>;
+-				read-only;
+ 			};
+ 
+ 			partition@f0000 {
+-- 
+2.7.4
+
