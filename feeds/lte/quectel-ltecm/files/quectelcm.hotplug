@@ -1,0 +1,53 @@
+#!/bin/sh
+  
+[ "$ACTION" = ifup ] || exit 0
+
+QTEL_IFNAME="wwan0"
+QTEL_CMNAME="quectel-CM"
+QTEL_EC25_USBID="2c7c:0125"
+MAX_CHECK="10"
+MIN_SLEEP="1"
+
+[ "${INTERFACE}" = "wan" ] && {
+	[ "$(uci get network.${INTERFACE}.inet_src)" = "${QTEL_IFNAME}" ] && [ "$(ifconfig ${QTEL_IFNAME} | grep UP)" != "" ] && {
+		[ "$(pidof ${QTEL_CMNAME})" = "" ] && {
+			local apn="$(uci -q get network.${INTERFACE}.apn)"
+			local user="$(uci -q get network.${INTERFACE}.username)"
+			local passwd="$(uci -q get network.${INTERFACE}.password)"
+			local auth="$(uci -q get network.${INTERFACE}.auth)"
+			local pincode="$(uci -q get network.${INTERFACE}.pincode)"
+			local count=0
+
+			while [ "$(lsusb | grep "${QTELEC25_USBID}")" = "" -a "${count}" -le "${MAX_CHECK}" ]
+			do
+				sleep ${MIN_SLEEP}
+
+				count=$((count + 1))
+			done
+
+			[ "${count}" -le "${MAX_CHECK}" ] && {
+				if [ "${apn}" != "" ]; then
+					if [ "${user}" != "" ]; then
+						if [ "${pincode}" != "" ]; then
+							${QTEL_CMNAME} -s ${apn} ${user} ${passwd} ${auth} -p ${pincode} &
+						else
+							${QTEL_CMNAME} -s ${apn} ${user} ${passwd} ${auth} -p &
+						fi
+					else
+						if [ "${pincode}" != "" ]; then
+							${QTEL_CMNAME} -s ${apn} -p ${pincode} &
+						else
+							${QTEL_CMNAME} -s ${apn} &
+						fi
+					fi
+				else
+					if [ "${pincode}" != "" ]; then
+						${QTEL_CMNAME} -p ${pincode} &
+					else
+						${QTEL_CMNAME} &
+					fi
+				fi
+			}
+		}
+	}
+}
