@@ -27,6 +27,7 @@
 #include "rrm_config.h"
 #include "vlan.h"
 #include "radius_proxy.h"
+#include "fixup.h"
 
 ovsdb_table_t table_Hotspot20_Config;
 ovsdb_table_t table_Hotspot20_OSU_Providers;
@@ -101,6 +102,10 @@ static void radio_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del
 	char value[20];
 	const char *opt;
 	const char *val;
+	struct radio_fixup *rfixup = radio_fixup_find(rconf->if_name);
+	bool hasDisableB = false;
+	bool hasMaxClients = false;
+	bool hasPwrConstraint = false;
 
 	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
@@ -112,22 +117,27 @@ static void radio_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del
 			strncpy(value, val, 20);
 
 		if (strcmp(opt, SCHEMA_CONSTS_DISABLE_B_RATES ) == 0) {
+			hasDisableB = true;
 			if (strcmp(value, "1") == 0)
 				blobmsg_add_bool(b, "legacy_rates", 0);
 			else 
 				blobmsg_add_bool(del, "legacy_rates", 0);
 		} else if (strcmp(opt, SCHEMA_CONSTS_MAX_CLIENTS) == 0) {
 			int maxassoc;
+			hasMaxClients = true;
 			maxassoc = strtol(value, NULL, 10);
+			rfixup->conf_max_clients = maxassoc;
+			if (maxassoc > 100)
+				maxassoc = 100;
+			rfixup->max_clients = maxassoc;
 			if (maxassoc <= 0) {
 				blobmsg_add_u32(del, "maxassoc", maxassoc);
 			} else {
-				if (maxassoc > 100)
-					maxassoc = 100;
 				blobmsg_add_u32(b, "maxassoc", maxassoc);
 			}
 		} else if (strcmp(opt, SCHEMA_CONSTS_LOCAL_PWR_CONSTRAINT) == 0) {
 			int pwr = atoi(value);
+			hasPwrConstraint = true;
 			if (!strcmp(rconf->freq_band, "2.4G")) {
 				blobmsg_add_u32(del, "local_pwr_constraint", pwr);
 			} else if (pwr >= 0 && pwr <=255) {
@@ -137,6 +147,9 @@ static void radio_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del
 			}
 		}
 	}
+	if (!hasDisableB) blobmsg_add_bool(del, "legacy_rates", 0);
+	if (!hasMaxClients) blobmsg_add_u32(del, "maxassoc", 100);
+	if (!hasPwrConstraint) blobmsg_add_u32(del, "local_pwr_constraint", 0);
 }
 
 static void set_custom_option_state(struct schema_Wifi_Radio_State *rstate,
@@ -339,9 +352,11 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 
 	char phy[6];
 	char ifname[8];
+	struct radio_fixup *rfixup = radio_fixup_find(rconf->if_name);
 
 	strncpy(ifname, rconf->if_name, sizeof(ifname));
 	strncpy(phy, target_map_ifname(ifname), sizeof(phy));
+        LOGI("%s: target_radio_config_set2 called", rconf->if_name);
 
 	if (changed->channel && rconf->channel)
 		blobmsg_add_u32(&b, "channel", rconf->channel);
@@ -352,11 +367,14 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 	if (changed->tx_power) {
 		int max_tx_power;
 		max_tx_power=phy_get_max_tx_power(phy,rconf->channel);
+		rfixup->conf_tx_power = rconf->tx_power;
 		if (rconf->tx_power<=max_tx_power) {
 			blobmsg_add_u32(&b, "txpower", rconf->tx_power);
+			rfixup->tx_power = rconf->tx_power;
 		}
 		else {
 			blobmsg_add_u32(&b, "txpower", max_tx_power);
+			rfixup->tx_power = max_tx_power;
 		}
 	}
 
@@ -369,12 +387,16 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 		} else {
 			txchainmask = rconf->tx_chainmask;
 		}
+                rfixup->conf_tx_chainmask= rconf->tx_chainmask;
 		if (rconf->tx_chainmask == 0) {
 			blobmsg_add_u32(&b, "txantenna", tx_ant_avail);
+			rfixup->tx_chainmask = tx_ant_avail;
 		} else if ((txchainmask & tx_ant_avail) != txchainmask) {
 			blobmsg_add_u32(&b, "txantenna", tx_ant_avail);
+			rfixup->tx_chainmask = tx_ant_avail;
 		} else {
 			blobmsg_add_u32(&b, "txantenna", txchainmask);
+			rfixup->tx_chainmask = rconf->tx_chainmask;
 		}
 	}
 
@@ -387,12 +409,16 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 		} else {
 			rxchainmask = rconf->rx_chainmask;
 		}
+                rfixup->conf_rx_chainmask= rconf->rx_chainmask;
 		if (rconf->rx_chainmask == 0) {
 			blobmsg_add_u32(&b, "rxantenna", rx_ant_avail);
+			rfixup->rx_chainmask = rx_ant_avail;
 		} else if ((rxchainmask & rx_ant_avail) != rxchainmask) {
 			blobmsg_add_u32(&b, "rxantenna", rx_ant_avail);
+			rfixup->rx_chainmask = rx_ant_avail;
 		} else {
 			blobmsg_add_u32(&b, "rxantenna", rxchainmask);
+			rfixup->rx_chainmask = rconf->rx_chainmask;
 		}
 	}
 
@@ -402,8 +428,13 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 	if (changed->bcn_int) {
 		int beacon_int = rconf->bcn_int;
 
-		if ((rconf->bcn_int < 50) || (rconf->bcn_int > 400))
+		rfixup->bcn_int = rconf->bcn_int;
+                rfixup->conf_bcn_int = rconf->bcn_int;
+
+		if ((rconf->bcn_int < 50) || (rconf->bcn_int > 400)) {
 			beacon_int = 100;
+			rfixup->bcn_int = 100;
+		}
 		blobmsg_add_u32(&b, "beacon_int", beacon_int);
 	}
 
@@ -413,6 +444,7 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 		FILE *confFile_p;
 		const char* hw_mode = rconf->hw_mode;
 
+		rfixup->hw_mode[0]=0;
 		channel_freq = ieee80211_channel_to_frequency(rconf->channel);
 		if (!strcmp(rconf->hw_mode, "auto")) {
 			char command[] = "auto-conf ";
@@ -425,6 +457,7 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 				pclose(confFile_p);
 				buffer[strlen(buffer) - 1] = '\0'; // Remove extra \n that got added from 'echo' in script
 				hw_mode = buffer;
+				strncpy(rfixup->hw_mode, buffer, sizeof(buffer));
 			}
 		}
 

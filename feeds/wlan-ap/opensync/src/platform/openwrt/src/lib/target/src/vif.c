@@ -26,6 +26,7 @@
 #include "ovsdb_table.h"
 #include "ovsdb_sync.h"
 #include "rrm_config.h"
+#include "fixup.h"
 
 #define MODULE_ID LOG_MODULE_ID_VIF
 #define UCI_BUFFER_SIZE 80
@@ -592,9 +593,9 @@ static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
 	const char *opt;
 	const char *val;
 	struct blob_attr *n;
-	bool found_nasid = false;
 	char mac[ETH_ALEN * 3];
 	struct blob_attr *tb[__WIF_ATTR_MAX] = { };
+	struct vif_fixup *vfixup = vif_fixup_find(vconf->if_name);
 
 	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
@@ -632,7 +633,7 @@ static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
 		else if (strcmp(opt, "radius_nas_id") == 0) {
 			if (strcmp(value, "\0") != 0) {
 				blobmsg_add_string(b, "nasid", value);
-				found_nasid = true;
+				vfixup->has_radius_nasid = true;
 			}
 		}
 		else if (strcmp(opt, "radius_nas_ip") == 0)
@@ -674,7 +675,7 @@ static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
 			if (strcmp(value, "1") == 0)
 				blobmsg_add_bool(b, "proxy_arp", 1);
 			else if (strcmp(value, "0") == 0)
-				blobmsg_add_bool(del, "proxy_arp", 1);
+				blobmsg_add_bool(b, "proxy_arp", 0);
 		} else if (strcmp(opt, "mcast_to_ucast") == 0) {
 			if (strcmp(value, "1") == 0)
 				blobmsg_add_bool(b, "multicast_to_unicast", 1);
@@ -684,7 +685,7 @@ static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
 	}
 
 	/* No NASID was found from blob, so use BSSID as NASID */
-	if (found_nasid == false) {
+	if (vfixup->has_radius_nasid == false) {
 		blobmsg_parse(wifi_iface_policy, __WIF_ATTR_MAX, tb, blob_data(b->head), blob_len(b->head));
 		if (tb[WIF_ATTR_IFNAME] && !vif_get_mac(blobmsg_get_string(tb[WIF_ATTR_IFNAME]), mac))
 			blobmsg_add_string(b, "nasid", mac);
@@ -710,6 +711,7 @@ static void vif_state_custom_options_get(struct schema_Wifi_VIF_State *vstate,
 	int index = 0;
 	const char *opt;
 	char *buf = NULL;
+        struct vif_fixup *vfixup = vif_fixup_find(vstate->if_name);
 
 	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
@@ -781,7 +783,7 @@ static void vif_state_custom_options_get(struct schema_Wifi_VIF_State *vstate,
 						buf);
 			}
 		} else if (strcmp(opt, "radius_nas_id") == 0) {
-			if (tb[WIF_ATTR_RADIUS_NAS_ID_ATTR]) {
+			if ((tb[WIF_ATTR_RADIUS_NAS_ID_ATTR]) && (vfixup->has_radius_nasid)) {
 				buf = blobmsg_get_string(tb[WIF_ATTR_RADIUS_NAS_ID_ATTR]);
 				set_custom_option_state(vstate, &index,
 						custom_options_table[i],
@@ -868,6 +870,7 @@ bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vcon
 	char *ifname, radio[IF_NAMESIZE];
 	bool vifIsActive = false;
 	char network_name[IF_NAMESIZE];
+	struct vif_fixup *vfixup; 
 
 	LOGT("%s: get state", s->e.name);
 
@@ -886,6 +889,7 @@ bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vcon
 	ifname = blobmsg_get_string(tb[WIF_ATTR_IFNAME]);
 	strncpy(radio, blobmsg_get_string(tb[WIF_ATTR_DEVICE]), IF_NAMESIZE);
 	vifIsActive = vif_find(ifname);
+	vfixup = vif_fixup_find(ifname);
 
 	vstate._partial_update = true;
 	vstate.associated_clients_present = false;
@@ -1002,6 +1006,11 @@ bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vcon
 			vstate.mac_list_len++;
 		}
 	}
+	if (tb[WIF_ATTR_MOBILITY_DOMAIN]) {
+		SCHEMA_SET_INT(vstate.ft_mobility_domain, blobmsg_get_hex16(tb[WIF_ATTR_MOBILITY_DOMAIN]));
+	}
+	SCHEMA_SET_INT(vstate.ft_psk, vfixup->conf_ft_psk);
+
 	vif_state_security_get(&vstate, tb);
 	vif_state_custom_options_get(&vstate, tb);
 	if(!strcmp(network_name,"lan")) {
@@ -1337,6 +1346,7 @@ bool target_vif_config_del(const struct schema_Wifi_VIF_Config *vconf)
 		ifname = uci_lookup_option_string( vif_ctx, s, "ifname" );
 		if (!strcmp(ifname,vconf->if_name)) {
 			uci_section_del(vif_ctx, "vif", "wireless", (char *)s->e.name, "wifi-iface");
+			vif_fixup_del((char *)vconf->if_name);
 			break;
 		}
 	}
@@ -1532,6 +1542,7 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 			const struct schema_Wifi_VIF_Config_flags *changed)
 {
 	int vid = 0;
+	struct vif_fixup *vfixup = vif_fixup_find(vconf->if_name);
 
 	blob_buf_init(&b, 0);
 	blob_buf_init(&del,0);
@@ -1570,6 +1581,7 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 		blobmsg_add_string(&b, "min_hw_mode", vconf->min_hw_mode);
 
 	if (changed->ft_psk || changed->ft_mobility_domain) {
+		vfixup->conf_ft_psk = vconf->ft_psk;
 		if (vconf->ft_mobility_domain) {
 			blobmsg_add_bool(&b, "ieee80211r", 1);
 			blobmsg_add_hex16(&b, "mobility_domain", vconf->ft_mobility_domain);
@@ -1653,11 +1665,11 @@ bool target_vif_config_set2(const struct schema_Wifi_VIF_Config *vconf,
 			const struct schema_Wifi_VIF_Config_flags *changed,
 			int num_cconfs)
 {
-	int rc;
+	LOGI("%s: target_vif_config_set2 called", vconf->if_name);
 	if (!strcmp(vconf->mode, "mesh")) {
-		rc = mesh_vif_config_set(rconf, vconf, changed);
+		(void) mesh_vif_config_set(rconf, vconf, changed);
 	} else {
-		rc = ap_vif_config_set(rconf, vconf, changed);
+		(void) ap_vif_config_set(rconf, vconf, changed);
 	}
 
 	return true;

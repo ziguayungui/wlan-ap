@@ -1,0 +1,38 @@
+--- a/src/lib/target/inc/target_common.h
++++ b/src/lib/target/inc/target_common.h
+@@ -194,6 +194,7 @@ bool target_radio_config_set (char *ifna
+  */
+ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
+                               const struct schema_Wifi_Radio_Config_flags *changed);
++bool target_radio_fixup(struct schema_Wifi_Radio_Config *rconf, struct schema_Wifi_Radio_State *rstate);
+ 
+ /**
+  * @brief Get state of radio interface
+@@ -279,6 +280,7 @@ bool target_vif_config_set2(const struct
+                             int num_cconfs);
+ 
+ bool target_vif_config_del(const struct schema_Wifi_VIF_Config *vconf);
++bool target_vif_fixup(struct schema_Wifi_VIF_Config *vconf, struct schema_Wifi_VIF_State *vstate);
+ 
+ /**
+  * @brief Get state of vif interface
+--- a/src/wm2/src/wm2_radio.c
++++ b/src/wm2/src/wm2_radio.c
+@@ -911,6 +911,9 @@ wm2_vconf_recalc(const char *ifname, boo
+         memcpy(vconf.security, vstate.security, sizeof(vconf.security));
+     }
+ 
++    if (has)
++        target_vif_fixup(&vconf, &vstate);
++
+     if (!wm2_vconf_changed(&vconf, &vstate, &vchanged) && !force)
+         return;
+ 
+@@ -1139,6 +1142,7 @@ wm2_rconf_recalc(const char *ifname, boo
+         }
+ 
+     if (want) {
++        target_radio_fixup(&rconf, &rstate);
+         wm2_rconf_recalc_fixup_nop_channel(&rconf, &rstate);
+         wm2_rconf_recalc_fixup_tx_chainmask(&rconf);
+     }
