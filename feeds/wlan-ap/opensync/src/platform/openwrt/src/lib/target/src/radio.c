@@ -27,6 +27,7 @@
 #include "rrm_config.h"
 #include "vlan.h"
 #include "radius_proxy.h"
+#include "ubus.h"
 
 ovsdb_table_t table_Hotspot20_Config;
 ovsdb_table_t table_Hotspot20_OSU_Providers;
@@ -35,6 +36,8 @@ ovsdb_table_t table_Radius_Proxy_Config;
 
 ovsdb_table_t table_APC_Config;
 ovsdb_table_t table_APC_State;
+ovsdb_table_t table_AWLAN_Node;
+extern ovsdb_table_t table_Wifi_VIF_Config;
 unsigned int radproxy_apc = 0;
 extern json_t* ovsdb_table_where(ovsdb_table_t *table, void *record);
 
@@ -44,6 +47,7 @@ struct blob_buf b = { };
 struct blob_buf del = { };
 int reload_config = 0;
 static struct timespec startup_time;
+//static bool update_state = false;
 
 enum {
 	WDEV_ATTR_PATH,
@@ -83,6 +87,13 @@ static const struct blobmsg_policy wifi_device_policy[__WDEV_ATTR_MAX] = {
 	[WDEV_ATTR_MAXASSOC_CLIENTS] = { .name = "maxassoc", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_LOCAL_PWR_CONSTRAINT] = { .name = "local_pwr_constraint", .type = BLOBMSG_TYPE_INT32 },
 };
+
+typedef enum
+{
+	CONFIG_APPLY_OK,
+	CONFIG_APPLY_DONE,
+	CONFIG_APPLY_FAIL
+} apply_config_status_t;
 
 #define SCHEMA_CUSTOM_OPT_SZ            24
 #define SCHEMA_CUSTOM_OPTS_MAX          3
@@ -210,6 +221,46 @@ static void update_channel_max_power(char* phy, struct schema_Wifi_Radio_State *
 		int max_tx_power = phy_get_max_tx_power(phy, channel);
 		set_channel_max_power(rstate, &index, channel, max_tx_power);
 	}
+}
+
+typedef enum {
+	CONFIG_APPLY,
+	CONFIG_APPLY_STATUS
+} config_apply_param_t;
+
+static void config_apply(config_apply_param_t param, int val)
+{
+	//json_t *where;
+	int cnt = 0, i = 0;
+	struct schema_AWLAN_Node *awlan_node = NULL;
+	void *records = NULL;
+	//where = ovsdb_table_where(&table_AWLAN_Node, NULL);
+	//if (where) {
+		//LOGI("=====where true=====");
+		if ((records = ovsdb_table_select_where(&table_AWLAN_Node, NULL, &cnt))) {
+			LOGI("=====select true=====");
+		for (i = 0; i < cnt; i++) {
+			awlan_node = (struct schema_AWLAN_Node *)records + i;
+			LOGI("=====%s awlan_node redirector=====", awlan_node->redirector_addr);
+		}
+		switch (param) {
+		case CONFIG_APPLY:
+			if (awlan_node->config_apply) {
+				LOGI("=====Config is appled, Disabling the config_apply flag=====");
+				SCHEMA_SET_INT(awlan_node->config_apply, val);
+			}
+			break;
+		case CONFIG_APPLY_STATUS:
+			LOGI("=====Config STATUS is appled, Disabling the config_apply flag=====");
+			break;
+		default:
+			return;
+		}
+		if (!ovsdb_table_update(&table_AWLAN_Node, awlan_node))
+			LOG(ERR, "=====awlan node: failed to update config_apply flag====");
+		//}
+		}
+	//}
 }
 
 const struct uci_blob_param_list wifi_device_param = {
@@ -488,6 +539,7 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 	blob_to_uci_section(uci, "wireless", rconf->if_name, "wifi-device",
 			    b.head, &wifi_device_param, del.head);
 
+	uci_commit_all(uci);
 	reload_config = 1;
 
 	return true;
@@ -496,11 +548,10 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 static void periodic_task(void *arg)
 {
 	static int counter = 0;
-	struct uci_element *e = NULL, *tmp = NULL;
-	int ret = 0;
-
-	if ((counter % 15) && !reload_config)
+	if ((counter % 15) && !reload_config) {
+		LOGI("======Counter value %d======", counter);
 		goto done;
+	}
 
 	if (startup_time.tv_sec) {
 		static struct timespec current_time;
@@ -513,39 +564,77 @@ static void periodic_task(void *arg)
 		}
 	}
 
-	if (reload_config) {
+/*	if (reload_config) {
 		LOGD("periodic: reload_config");
 		reload_config = 0;
 		uci_commit_all(uci);
-		sync();
-		system("reload_config");
+
 	}
-
-	LOGD("periodic: start state update ");
-	ret = uci_load(uci, "wireless", &wireless);
-	if (ret) {
-		LOGE("%s: uci_load() failed with rc %d", __func__, ret);
-		return;
-	}
-	uci_foreach_element_safe(&wireless->sections, tmp, e) {
-		struct uci_section *s = uci_to_section(e);
-
-		if (!strcmp(s->type, "wifi-device"))
-			radio_state_update(s, NULL, false);
-	}
-
-	uci_foreach_element_safe(&wireless->sections, tmp, e) {
-		struct uci_section *s = uci_to_section(e);
-
-		if (!strcmp(s->type, "wifi-iface"))
-			vif_state_update(s, NULL);
-	}
-	uci_unload(uci, wireless);
-	LOGD("periodic: stop state update ");
-
+*/
 done:
-	counter++;
-	evsched_task_reschedule_ms(EVSCHED_SEC(1));
+		counter++;
+		evsched_task_reschedule_ms(EVSCHED_SEC(1));
+}
+
+static void update_state_tables(void)
+{
+	int cnt = 0;
+	int i;
+	struct uci_element *e = NULL, *tmp = NULL;
+	int ret = 0;
+	struct schema_Wifi_VIF_Config *vconf;
+	void *records_array = NULL;
+	char **objlist;
+	records_array = ovsdb_table_select_where(&table_Wifi_VIF_Config, NULL, &cnt);
+
+	if (!records_array)
+		return;
+	objlist = (char **) malloc(sizeof(char*) * cnt);
+	for (i = 0; i < cnt; i++) {
+		vconf = (struct schema_Wifi_VIF_Config *)records_array + i;
+		LOGI("=====conf table vif name ====== %s", vconf->if_name);
+		objlist[i] = (char *) malloc(sizeof(char) * 64);
+		snprintf(objlist[i], 64, "hostapd.%s", vconf->if_name);
+	}
+
+	wait_for_ubus_obj(objlist, cnt, WLAN_IFUP_TIMEOUT);
+
+	//if (update_state) {
+		LOGI("=====periodic: start state update ======");
+		ret = uci_load(uci, "wireless", &wireless);
+		if (ret) {
+			LOGE("%s: uci_load() failed with rc %d", __func__, ret);
+			goto out;
+		}
+		uci_foreach_element_safe(&wireless->sections, tmp, e) {
+			struct uci_section *s = uci_to_section(e);
+
+			if (!strcmp(s->type, "wifi-device"))
+				radio_state_update(s, NULL, false);
+		}
+
+		uci_foreach_element_safe(&wireless->sections, tmp, e) {
+			struct uci_section *s = uci_to_section(e);
+
+			if (!strcmp(s->type, "wifi-iface"))
+				vif_state_update(s, NULL, false);
+		}
+		uci_unload(uci, wireless);
+		LOGI("=====periodic: stop state update ======");
+		//update_state = 0;
+		// config_apply(CONFIG_APPLY, 0);
+	//}
+
+out:
+	for (i = 0; i < cnt; i++) {
+		if (objlist && objlist[i])
+			free(objlist[i]);
+	}
+	if (objlist)
+		free(objlist);
+	if (records_array)
+		free(records_array);
+	//
 }
 
 bool target_radio_config_init2(void)
@@ -569,7 +658,7 @@ bool target_radio_config_init2(void)
 
 		if (!strcmp(s->type, "wifi-iface")) {
 			if (sscanf((char*)s->e.name, "wlan%d", &radio_idx)) {
-				vif_state_update(s, &vconf);
+				vif_state_update(s, &vconf, true);
 			} else {
 				uci_section_del(uci, "vif", "wireless", (char *)s->e.name, "wifi-iface");
 				invalidVifFound = 1;
@@ -730,6 +819,7 @@ static void callback_Hotspot20_Icon_Config(ovsdb_update_monitor_t *mon,
 	return;
 
 }
+
 
 enum {
 	WIF_APC_ENABLE,
@@ -1009,12 +1099,53 @@ void apc_init()
 
 }
 
+static void callback_AWLAN_Node(
+		ovsdb_update_monitor_t *self,
+		struct schema_AWLAN_Node *old_rec,
+		struct schema_AWLAN_Node *awlan_node)
+{
+	switch (self->mon_type) {
+	case OVSDB_UPDATE_NEW:
+	case OVSDB_UPDATE_MODIFY:
+		if(awlan_node->config_apply_changed && awlan_node->config_apply) {
+			sync();
+			system("reload_config");
+			config_apply(CONFIG_APPLY, 0);
+			//awlan_node->config_apply_status = CONFIG_APPLY_DONE;
+			//reload_config = 0;
+			//evsched_task(&update_state_tables, NULL, EVSCHED_SEC(10));
+			update_state_tables();
+			//update_state = true;
+		}
+		break;
+
+	case OVSDB_UPDATE_DEL:
+		LOG(ERR, "AWLAN_Node table single row deleted !!! ");
+		break;
+
+	default:
+		LOG(ERR, "AWLAN Cb unknown monitor type event: %d", self->mon_type);
+		break;
+	}
+}
+
+void conf_apply_mon(void)
+{
+	char   *filter[] = { "+",
+			SCHEMA_COLUMN(AWLAN_Node, config_apply),
+			NULL };
+
+	OVSDB_TABLE_INIT_NO_KEY(AWLAN_Node);
+	OVSDB_TABLE_MONITOR_F(AWLAN_Node, filter);
+}
+
 bool target_radio_init(const struct target_radio_ops *ops)
 {
 	uci = uci_alloc_context();
 
 	captive_portal_init();
 	target_map_init();
+	//vif_init();
 
 	target_map_insert("radio0", "phy0");
 	target_map_insert("radio1", "phy1");
@@ -1036,6 +1167,11 @@ bool target_radio_init(const struct target_radio_ops *ops)
 
 	OVSDB_TABLE_INIT(Radius_Proxy_Config, _uuid);
 	OVSDB_TABLE_MONITOR(Radius_Proxy_Config, false);
+
+	conf_apply_mon();
+
+    OVSDB_TABLE_INIT(AWLAN_Node, _uuid);
+    OVSDB_TABLE_MONITOR(AWLAN_Node, false);
 
 
 	evsched_task(&periodic_task, NULL, EVSCHED_SEC(5));

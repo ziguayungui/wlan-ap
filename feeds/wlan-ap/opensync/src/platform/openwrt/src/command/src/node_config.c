@@ -159,7 +159,7 @@ static void syslog_handler(int type,
 	blob_to_uci_section(uci, "system", "@system[-1]", "system",
 			    b.head, &log_param, NULL);
 	uci_commit_all(uci);
-	system("/sbin/reload_config");
+	//system("/sbin/reload_config");
 	if (del)
 		node_state_del("syslog");
 	else
@@ -252,7 +252,7 @@ static void ntp_handler(int type,
 	blob_to_uci_section(uci, "system", "ntp", "timeserver",
 			    b.head, &ntp_param, NULL);
 	uci_commit_all(uci);
-	system("/sbin/reload_config");
+	//system("/sbin/reload_config");
 	ntp_state(0);
 }
 
@@ -364,7 +364,7 @@ static void led_handler(int type,
 		globfree(&gl);
 	}
 	uci_commit_all(uci);
-	system("/sbin/reload_config");
+	//system("/sbin/reload_config");
 	led_state(0);
 }
 

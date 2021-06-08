@@ -19,6 +19,7 @@ struct ev_loop *loop;
 static ev_io ubus_io;
 
 static struct ubus_context ubus;
+//static struct ubus_context ctx;
 static struct ubus_subscriber ubus_subscriber;
 static struct ubus_instance *ubus_instance;
 
@@ -135,6 +136,181 @@ static void ubus_connection_lost_cb(struct ubus_context *ctx)
 {
 	ev_io_stop(loop, &ubus_io);
 	evsched_task(&ubus_reconnect_cb, NULL, EVSCHED_SEC(1));
+}
+/*
+static void wait_event_cb(struct ubus_context *ctx, struct ubus_event_handler *ev,
+			  const char *type, struct blob_attr *msg)
+{
+	static const struct blobmsg_policy policy = {
+		"path", BLOBMSG_TYPE_STRING
+	};
+	char objname[64];
+	const char *path;
+	struct blob_attr *attr;
+
+	struct wait_event_data *data = container_of(ev, struct wait_event_data, ev);
+	snprintf(objname, sizeof(objname), "hostapd.%s", data->ifname);
+
+	if (strcmp(type, "ubus.object.add") != 0)
+		return;
+
+	blobmsg_parse(&policy, 1, &attr, blob_data(msg), blob_len(msg));
+	if (!attr)
+		return;
+
+	path = blobmsg_data(attr);
+	LOGI("======%s: path %s=======", path, data->ifname);
+	if (!strcmp(path, objname)) {
+		LOGI("======%s: ifup %s=======", path, objname);
+		data->ifup = true;
+		uloop_end();
+	}
+}
+
+static void wait_event_timeout(struct uloop_timeout *timeout)
+{
+	uloop_end();
+}
+
+static int wait_for_ifup(char *ifname, int timeout)
+{
+	struct wait_event_data data;
+	int ret;
+	data.timeout.cb = wait_event_timeout;
+	data.ev.cb = wait_event_cb;
+	data.ifup = false;
+	strncpy(data.ifname, ifname, IF_NAMESIZE);
+
+	uloop_init();
+	ubus_add_uloop(ctx);
+
+	ret = ubus_register_event_handler(ctx, &data.ev, "ubus.object.add");
+	if (ret)
+		return ret;
+
+	uloop_timeout_set(&data.timeout, timeout * 1000);
+	uloop_run();
+	uloop_done();
+
+	if (!data.ifup)
+		return UBUS_STATUS_TIMEOUT;
+
+	return ret;
+}*/
+
+struct wait_event_data {
+	struct uloop_timeout timeout;
+	struct ubus_event_handler ev;
+	char **pending;
+	int n_pending;
+};
+
+static void wait_check_object(struct wait_event_data *data, const char *path)
+{
+	int i;
+
+	for (i = 0; i < data->n_pending; i++) {
+		LOG(INFO, "====pending======== %s", data->pending[i]);
+		if (strcmp(path, data->pending[i]) != 0)
+			continue;
+
+		data->n_pending--;
+		if (i == data->n_pending)
+			break;
+
+		memmove(&data->pending[i], &data->pending[i + 1],
+			(data->n_pending - i) * sizeof(*data->pending));
+		i--;
+	}
+
+	if (!data->n_pending) {
+		LOG(INFO, "====IF UP ALL========");
+		uloop_end();
+	}
+
+}
+
+static void wait_event_cb(struct ubus_context *ctx, struct ubus_event_handler *ev,
+			  const char *type, struct blob_attr *msg)
+{
+	static const struct blobmsg_policy policy = {
+		"path", BLOBMSG_TYPE_STRING
+	};
+	struct wait_event_data *data = container_of(ev, struct wait_event_data, ev);
+	struct blob_attr *attr;
+	const char *path;
+
+	if (strcmp(type, "ubus.object.add") != 0)
+		return;
+
+	blobmsg_parse(&policy, 1, &attr, blob_data(msg), blob_len(msg));
+	if (!attr)
+		return;
+
+	path = blobmsg_data(attr);
+	wait_check_object(data, path);
+}
+
+static void wait_list_cb(struct ubus_context *ctx, struct ubus_object_data *obj, void *priv)
+{
+	struct wait_event_data *data = priv;
+
+	wait_check_object(data, obj->path);
+}
+
+
+static void wait_timeout(struct uloop_timeout *timeout)
+{
+	uloop_end();
+}
+
+int wait_for_ubus_obj(char **objlist, int n_objs, int timeout)
+{
+	struct wait_event_data data = {
+		.timeout.cb = wait_timeout,
+		.ev.cb = wait_event_cb,
+		.pending = objlist,
+		.n_pending = n_objs,
+	};
+	int ret = 0;
+
+	struct ubus_context *ctx = NULL;
+	ctx = ubus_connect(NULL);
+
+	if (!ctx) {
+		goto out;
+	}
+
+	uloop_init();
+	ubus_add_uloop(ctx);
+
+	ret = ubus_register_event_handler(ctx, &data.ev, "ubus.object.add");
+	if (ret)
+		goto out;
+
+	if (!data.n_pending)
+		goto out;
+
+	ret = ubus_lookup(ctx, NULL, wait_list_cb, &data);
+	if (ret)
+		goto out;
+
+	if (!data.n_pending)
+		goto out;
+
+	uloop_timeout_set(&data.timeout, timeout * 1000);
+	uloop_run();
+	uloop_done();
+
+	if (data.n_pending) {
+		LOG(INFO, "====TIMEDOUT========");
+		ret = UBUS_STATUS_TIMEOUT;
+	}
+
+out:
+	if (ctx)
+		free(ctx);
+	return ret;
 }
 
 static void ubus_reconnect_cb(void *arg)

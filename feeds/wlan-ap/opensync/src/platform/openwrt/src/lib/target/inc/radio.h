@@ -8,6 +8,8 @@ struct rrm_neighbor {
 	char *ssid;
 	char *ie;
 };
+#define WLAN_IFUP_TIMEOUT 70 /* secs */
+#define MAX_SSID 24 /* 8 ssids are supported per radio */
 
 extern const struct target_radio_ops *radio_ops;
 extern int reload_config;
@@ -20,6 +22,7 @@ extern int hapd_rrm_enable(char *name, int neighbor, int beacon);
 extern int hapd_rrm_set_neighbors(char *name, struct rrm_neighbor *neigh, int count);
 
 extern void radio_maverick(void *arg);
+//extern void vif_init(void);
 
 int nl80211_channel_get(char *name, unsigned int *chan);
 

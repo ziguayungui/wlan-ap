@@ -23,5 +23,6 @@ struct ubus_instance {
 
 extern int ubus_init(struct ubus_instance *instance, struct ev_loop *_loop);
 extern uint32_t ubus_lookup_remote(char *name);
+int wait_for_ubus_obj(char **objlist, int n_objs, int timeout);
 
 #endif

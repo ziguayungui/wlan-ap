@@ -116,7 +116,7 @@ void wifi_inet_state_set(struct blob_attr *msg)
 	}
 
 	SCHEMA_SET_STR(state.if_name, blobmsg_get_string(tb[NET_ATTR_INTERFACE]));
-
+	LOG(INFO, "========INETRFACE in NOTIFY=========%s", blobmsg_get_string(tb[NET_ATTR_INTERFACE]));
 	if (!strcmp(state.if_name, "loopback"))
 		return;
 

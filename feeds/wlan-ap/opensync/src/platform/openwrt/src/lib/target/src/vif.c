@@ -26,6 +26,7 @@
 #include "ovsdb_table.h"
 #include "ovsdb_sync.h"
 #include "rrm_config.h"
+#include "ubus.h"
 
 #define MODULE_ID LOG_MODULE_ID_VIF
 #define UCI_BUFFER_SIZE 80
@@ -33,6 +34,7 @@
 extern ovsdb_table_t table_Wifi_VIF_Config;
 extern ovsdb_table_t table_Hotspot20_Icon_Config;
 extern ovsdb_table_t table_Radius_Proxy_Config;
+//static struct ubus_context *ctx = NULL;
 
 extern struct blob_buf b;
 extern struct blob_buf del;
@@ -860,7 +862,9 @@ static void vif_state_custom_options_get(struct schema_Wifi_VIF_State *vstate,
 	}
 }
 
-bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vconf)
+
+
+bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vconf, bool init)
 {
 	struct blob_attr *tb[__WIF_ATTR_MAX] = { };
 	struct schema_Wifi_VIF_State vstate;
@@ -884,6 +888,8 @@ bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vcon
 	}
 
 	ifname = blobmsg_get_string(tb[WIF_ATTR_IFNAME]);
+	//if (!init)
+		//wait_for_ifup(ifname, 70);
 	strncpy(radio, blobmsg_get_string(tb[WIF_ATTR_DEVICE]), IF_NAMESIZE);
 	vifIsActive = vif_find(ifname);
 
@@ -1402,6 +1408,7 @@ void vif_hs20_osu_update(struct schema_Hotspot20_OSU_Providers *osuconf)
 
 	blob_to_uci_section(uci, "wireless", osuconf->osu_provider_name, "osu-provider",
 			osu.head, &wifi_hs20_osu_param, NULL);
+	uci_commit_all(uci);
 	reload_config = 1;
 }
 
@@ -1433,6 +1440,7 @@ void vif_hs20_icon_update(struct schema_Hotspot20_Icon_Config *iconconf)
 
 		blob_to_uci_section(uci, "wireless", iconconf->icon_config_name, "hs20-icon",
 				hs20.head, &wifi_hs20_icon_param, NULL);
+		uci_commit_all(uci);
 		reload_config = 1;
 	}
 }
@@ -1456,6 +1464,7 @@ void vif_hs20_update(struct schema_Hotspot20_Config *hs2conf)
 			hs20_vif_config(&b, hs2conf);
 			blob_to_uci_section(uci, "wireless", vconf.if_name, "wifi-iface",
 					b.head, &wifi_iface_param, NULL);
+			uci_commit_all(uci);
 			reload_config = 1;
 		}
 	}
@@ -1526,7 +1535,7 @@ static int mesh_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 	blobmsg_add_string(&mesh, "master", "bat0");
 	blob_to_uci_section(uci, "network", vconf->if_name, "interface",
 			mesh.head, &wifi_mesh_param, NULL);
-
+	uci_commit_all(uci);
 	reload_config = 1;
 	return 0;
 }
@@ -1646,7 +1655,7 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 	{
 		vif_dhcp_opennds_allowlist_set(vconf,(char*)vconf->if_name);
 	}
-
+	uci_commit_all(uci);
 	reload_config = 1;
 	return 0;
 }
@@ -1666,3 +1675,10 @@ bool target_vif_config_set2(const struct schema_Wifi_VIF_Config *vconf,
 
 	return true;
 }
+/*
+void vif_init(void)
+{
+	ctx = ubus_connect(NULL);
+	if (!ctx)
+		LOGE("%s ubus connect: cannot find ubus socket", __func__);
+}*/

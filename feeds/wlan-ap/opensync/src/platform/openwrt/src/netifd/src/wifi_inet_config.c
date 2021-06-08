@@ -388,7 +388,7 @@ static void callback_Wifi_Inet_Config(ovsdb_update_monitor_t *mon,
 	return;
 }
 
-static void periodic_task(void *arg)
+/*static void periodic_task(void *arg)
 {
 	if (reload_config) {
 		uci_commit_all(uci);
@@ -398,7 +398,7 @@ static void periodic_task(void *arg)
 
 	evsched_task_reschedule_ms(EVSCHED_SEC(5));
 }
-
+*/
 void wifi_inet_config_init(void)
 {
 	struct uci_element *e = NULL;
@@ -418,7 +418,7 @@ void wifi_inet_config_init(void)
 	}
 	uci_unload(uci, network);
 	OVSDB_TABLE_MONITOR(Wifi_Inet_Config, false);
-	evsched_task(&periodic_task, NULL, EVSCHED_SEC(5));
+	//evsched_task(&periodic_task, NULL, EVSCHED_SEC(5));
 
 	return;
 }
