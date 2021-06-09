@@ -3,13 +3,9 @@ profile: edgecore_spw2ac1200
 target: ipq40xx
 subtarget: generic
 description: Build image for the Edgecore SPW2AC1200
-feeds:
-  - name: lte
-    path: ../../feeds/lte
 
 packages:
-        - libdl
-        - quectel-ltecm
+        - minicom
 
 diffconfig: |
     CONFIG_PACKAGE_kmod-usb-net=y
@@ -17,3 +13,8 @@ diffconfig: |
     CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
     CONFIG_PACKAGE_kmod-usb-wdm=y
     CONFIG_PACKAGE_usbutils=y
+    CONFIG_PACKAGE_kmod-usb-serial-option=y
+    CONFIG_PACKAGE_kmod-usb-serial=y
+    CONFIG_PACKAGE_uqmi=y
+    CONFIG_BUSYBOX_CUSTOM=y
+    CONFIG_BUSYBOX_CONFIG_MICROCOM=y
