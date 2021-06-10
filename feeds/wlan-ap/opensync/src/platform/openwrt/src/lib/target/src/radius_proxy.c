@@ -410,7 +410,8 @@ void callback_Radius_Proxy_Config(ovsdb_update_monitor_t *self,
 		LOG(ERR, "Radius_Proxy_Config: unexpected mon_type %d %s",
 				self->mon_type, self->mon_uuid);
 		break;
-	}	
+	}
+	set_config_apply_timeout(self);
 	return;
 }
 

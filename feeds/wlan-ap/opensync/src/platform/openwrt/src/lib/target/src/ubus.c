@@ -22,6 +22,7 @@ static struct ubus_context ubus;
 //static struct ubus_context ctx;
 static struct ubus_subscriber ubus_subscriber;
 static struct ubus_instance *ubus_instance;
+#define APPLY_CONFIG_TIMEOUT 10
 
 static struct avl_tree ubus_tree = AVL_TREE_INIT(ubus_tree, avl_strcmp, false, NULL);
 
@@ -208,18 +209,22 @@ struct wait_event_data {
 static void wait_check_object(struct wait_event_data *data, const char *path)
 {
 	int i;
-
+	LOG(INFO, "====wait_check_object called path %s, pending %d========", path, data->n_pending);
 	for (i = 0; i < data->n_pending; i++) {
-		LOG(INFO, "====pending======== %s", data->pending[i]);
+		LOG(INFO, "====pending======== %s  i:%d", data->pending[i], i);
 		if (strcmp(path, data->pending[i]) != 0)
 			continue;
 
 		data->n_pending--;
-		if (i == data->n_pending)
+		if (i == data->n_pending) {
+			LOG(INFO, "====Breaking loop========");
 			break;
+		}
 
-		memmove(&data->pending[i], &data->pending[i + 1],
-			(data->n_pending - i) * sizeof(*data->pending));
+		//memmove(&data->pending[i], &data->pending[i + 1],
+			//(data->n_pending - i) * sizeof(*data->pending));
+
+		LOG(INFO, "====pending after memove i:%d======== pending[i] %s, pending [i+1] %s AND 3 %s AND 4 %s", i, data->pending[i], data->pending[i+1],data->pending[i+2],data->pending[i+3]);
 		i--;
 	}
 
@@ -257,7 +262,6 @@ static void wait_list_cb(struct ubus_context *ctx, struct ubus_object_data *obj,
 
 	wait_check_object(data, obj->path);
 }
-
 
 static void wait_timeout(struct uloop_timeout *timeout)
 {
