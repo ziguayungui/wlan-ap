@@ -1,0 +1,33 @@
+From 86a60bf827f581040b2137ffacd1daf739f46a00 Mon Sep 17 00:00:00 2001
+From: Ammad Rehmat <ammad.rehmat@connectus.ai>
+Date: Mon, 28 Jun 2021 16:41:46 -0400
+Subject: [PATCH] wifi-2538: cell size optimization
+
+---
+ package/system/procd/files/reload_config | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/package/system/procd/files/reload_config b/package/system/procd/files/reload_config
+index cb5b946054..6f53787a01 100644
+--- a/package/system/procd/files/reload_config
++++ b/package/system/procd/files/reload_config
+@@ -6,11 +6,14 @@ for config in /etc/config/*; do
+ 	uci show "${file##*/}" > /var/run/config.check/$file
+ done
+ FILE=/tmp/wireless_changes.txt
++FILE2=/tmp/cell_optimzation.txt
+ MD5FILE=/var/run/config.md5
+ [ -f $MD5FILE ] && {
+         for c in `md5sum -c $MD5FILE 2>/dev/null| grep FAILED | cut -d: -f1`; do
+-                if [ -f "$FILE" ];then
+-                        bash /bin/ubus_update.sh
++                if [ -f "$FILE" ] && [ "$(basename $c)" = "wireless" ];then
++                        wlan_ap_rrm_rebalance.sh
++		else if [ -f "$FILE2" ] && [ "$(basename $c)" = "wireless" ];then
++			wlan_ap_cell_size_optimization.sh
+ 		else
+ 			ubus call service event "{ \"type\": \"config.change\", \"data\": { \"package\": \"$(basename $c)\" }}"
+ 		fi
+-- 
+2.17.1
+

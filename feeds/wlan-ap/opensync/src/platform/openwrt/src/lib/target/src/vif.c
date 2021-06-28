@@ -1629,6 +1629,21 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 	if (changed->custom_options)
 		vif_config_custom_opt_set(&b, &del, vconf);
 
+	if (!(changed->enabled || changed->ssid || changed->ssid_broadcast ||
+		changed->ap_bridge || changed->uapsd_enable || changed->min_hw_mode ||
+		changed->ft_psk || changed->ft_mobility_domain || changed->btm ||
+		changed->bridge || changed->vlan_id || changed->mac_list_type ||
+		changed->custom_options )) {
+
+		FILE * fPtr;
+		fPtr = fopen("/tmp/cell_optimzation.txt", "w");
+
+		if(fPtr) {
+			fputs(vconf->if_name,fPtr);
+			fputs("\n",fPtr);
+		}
+	}
+
 	rrm_config_vif(&b, &del, rconf->freq_band, vconf->if_name);
 
 	blob_to_uci_section(uci, "wireless", vconf->if_name, "wifi-iface",
