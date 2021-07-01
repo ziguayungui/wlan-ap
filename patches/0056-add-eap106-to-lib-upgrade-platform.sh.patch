@@ -1,0 +1,33 @@
+From f5804828e013681b22c0eb78bafd6304858033c9 Mon Sep 17 00:00:00 2001
+From: "peter.chiu" <peter.chiu@4ipnet.com>
+Date: Thu, 1 Jul 2021 11:05:29 +0800
+Subject: [PATCH] add eap106 to /lib/upgrade/platform.sh Changes to be
+ committed:  modified:   linux/ipq807x/base-files/lib/upgrade/platform.sh
+
+---
+ target/linux/ipq807x/base-files/lib/upgrade/platform.sh | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/target/linux/ipq807x/base-files/lib/upgrade/platform.sh b/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
+index a520df4..b383198 100755
+--- a/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
++++ b/target/linux/ipq807x/base-files/lib/upgrade/platform.sh
+@@ -25,6 +25,7 @@ platform_check_image() {
+ 	cig,wf194c|\
+ 	edgecore,eap101|\
+ 	edgecore,eap102|\
++	edgecore,eap106|\
+ 	qcom,ipq6018-cp01|\
+ 	qcom,ipq807x-hk01|\
+ 	tplink,ex227|\
+@@ -46,6 +47,7 @@ platform_do_upgrade() {
+ 	cig,wf188)
+ 		qca_do_upgrade $1
+ 		;;
++	edgecore,eap106|\
+ 	cig,wf188n|\
+ 	cig,wf194c|\
+ 	qcom,ipq6018-cp01|\
+-- 
+2.7.4
+

@@ -129,8 +129,8 @@ index 0000000..632a688
 ++/ {
 ++	#address-cells = <0x2>;
 ++	#size-cells = <0x2>;
-++	model = "Qualcomm Technologies, Inc. IPQ807x/AP-HK02";
-++	compatible = "qcom,ipq807x-hk02", "qcom,ipq807x";
+++	model = "Edgecore EAP106";
+++	compatible = "edgecore,eap106", "qcom,ipq807x-hk02", "qcom,ipq807x";
 ++	qcom,msm-id = <0x143 0x0>;
 ++	interrupt-parent = <&intc>;
 ++	qcom,board-id = <0x8 0x0>;
