@@ -1,0 +1,11 @@
+--- a/platform/openwrt/src/lib/target/src/sysupgrade.c
++++ b/platform/openwrt/src/lib/target/src/sysupgrade.c
+@@ -268,7 +268,7 @@ static bool upg_upgrade(const char *pass
+ 
+ 	if (!WIFEXITED(ret_status) || WEXITSTATUS(ret_status) != 0) {
+ 		LOG(ERR, "UM: sysupgrade failed");
+-		status = OSP_UPG_FL_WRITE;
++		status = ret_status;
+ 		return false;
+ 	}
+ 
