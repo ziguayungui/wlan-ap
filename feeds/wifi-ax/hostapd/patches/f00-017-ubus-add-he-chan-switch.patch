@@ -1,0 +1,68 @@
+Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ubus.c
++++ hostapd-2020-07-02-58b384f4/src/ap/ubus.c
+@@ -528,6 +528,7 @@ enum {
+ 	CSA_SEC_CHANNEL_OFFSET,
+ 	CSA_HT,
+ 	CSA_VHT,
++	CSA_HE,
+ 	CSA_BLOCK_TX,
+ 	__CSA_MAX
+ };
+@@ -541,6 +542,7 @@ static const struct blobmsg_policy csa_p
+ 	[CSA_SEC_CHANNEL_OFFSET] = { "sec_channel_offset", BLOBMSG_TYPE_INT32 },
+ 	[CSA_HT] = { "ht", BLOBMSG_TYPE_BOOL },
+ 	[CSA_VHT] = { "vht", BLOBMSG_TYPE_BOOL },
++	[CSA_HE] = { "he", BLOBMSG_TYPE_BOOL },
+ 	[CSA_BLOCK_TX] = { "block_tx", BLOBMSG_TYPE_BOOL },
+ };
+ 
+@@ -783,8 +785,10 @@ hostapd_switch_chan(struct ubus_context
+ 	SET_CSA_SETTING(CSA_SEC_CHANNEL_OFFSET, freq_params.sec_channel_offset, u32);
+ 	SET_CSA_SETTING(CSA_HT, freq_params.ht_enabled, bool);
+ 	SET_CSA_SETTING(CSA_VHT, freq_params.vht_enabled, bool);
++	SET_CSA_SETTING(CSA_HE, freq_params.he_enabled, bool);
+ 	SET_CSA_SETTING(CSA_BLOCK_TX, block_tx, bool);
+ 
++	wpa_printf(MSG_INFO, "Kiran:%s", __func__);
+ 	for (i = 0; i < hapd->iface->num_bss; i++) {
+ 		if (hostapd_switch_channel(hapd->iface->bss[i], &css) != 0)
+ 			return UBUS_STATUS_NOT_SUPPORTED;
+Index: hostapd-2020-07-02-58b384f4/src/ap/ap_drv_ops.h
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ap_drv_ops.h
++++ hostapd-2020-07-02-58b384f4/src/ap/ap_drv_ops.h
+@@ -296,6 +296,7 @@ static inline int hostapd_drv_switch_cha
+ 	    hapd->drv_priv == NULL)
+ 		return -1;
+ 
++	wpa_printf(MSG_INFO, "Kiran:%s", __func__);
+ 	return hapd->driver->switch_channel(hapd->drv_priv, settings);
+ }
+ 
+Index: hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/hostapd.c
++++ hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
+@@ -3665,6 +3665,7 @@ static int hostapd_fill_csa_settings(str
+ 	settings->counter_offset_beacon[1] = hapd->cs_c_off_ecsa_beacon;
+ 	settings->counter_offset_presp[1] = hapd->cs_c_off_ecsa_proberesp;
+ 
++	wpa_printf(MSG_INFO, "Kiran:%s", __func__);
+ 	return 0;
+ }
+ 
+Index: hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/drivers/driver_nl80211.c
++++ hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
+@@ -9792,7 +9792,7 @@ static int nl80211_switch_channel(void *
+ 	int csa_off_len = 0;
+ 	int i;
+ 
+-	wpa_printf(MSG_DEBUG, "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d width=%d cf1=%d cf2=%d)",
++	wpa_printf(MSG_INFO, "Kiran:%s nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d width=%d cf1=%d cf2=%d)", __func__,
+ 		   settings->cs_count, settings->block_tx,
+ 		   settings->freq_params.freq, settings->freq_params.bandwidth,
+ 		   settings->freq_params.center_freq1,

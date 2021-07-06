@@ -274,8 +274,11 @@ void rrm_radio_rebalance_channel(const struct schema_Wifi_Radio_Config *rconf)
 
 	get_channel_bandwidth(mode, &channel_bandwidth);
 
-	ubus_set_channel_switch(wlanif, freq, channel_bandwidth,
-				sec_chan_offset);
+
+	LOGI("Kiran:%s: mode=%s, channel_bw = %d", __func__, mode, channel_bandwidth);
+	ubus_set_channel_switch(wlanif, freq, rconf->hw_mode,
+				channel_bandwidth, sec_chan_offset);
+
 }
 
 static bool rrm_config_update( struct schema_Wifi_RRM_Config *conf, bool addNotDelete)
