@@ -61,7 +61,7 @@ enum {
 	WDEV_ATTR_TX_ANTENNA,
 	WDEV_ATTR_RX_ANTENNA,
 	WDEV_ATTR_FREQ_BAND,
-	WDEV_AATR_CHANNELS,
+	WDEV_ATTR_CHANNELS,
 	WDEV_ATTR_DISABLE_B_RATES,
 	WDEV_ATTR_MAXASSOC_CLIENTS,
 	WDEV_ATTR_LOCAL_PWR_CONSTRAINT,
@@ -81,7 +81,7 @@ static const struct blobmsg_policy wifi_device_policy[__WDEV_ATTR_MAX] = {
 	[WDEV_ATTR_TX_ANTENNA] = { .name = "txantenna", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_RX_ANTENNA] = { .name = "rxantenna", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_FREQ_BAND] = { .name = "freq_band", .type = BLOBMSG_TYPE_STRING },
-	[WDEV_AATR_CHANNELS] = {.name = "channels", .type = BLOBMSG_TYPE_ARRAY},
+	[WDEV_ATTR_CHANNELS] = {.name = "channels", .type = BLOBMSG_TYPE_ARRAY},
 	[WDEV_ATTR_DISABLE_B_RATES] = { .name = "legacy_rates", .type = BLOBMSG_TYPE_BOOL },
 	[WDEV_ATTR_MAXASSOC_CLIENTS] = { .name = "maxassoc", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_LOCAL_PWR_CONSTRAINT] = { .name = "local_pwr_constraint", .type = BLOBMSG_TYPE_INT32 },
@@ -96,7 +96,7 @@ static const char custom_options_table[SCHEMA_CUSTOM_OPTS_MAX][SCHEMA_CUSTOM_OPT
 	SCHEMA_CONSTS_MAX_CLIENTS,
 	SCHEMA_CONSTS_LOCAL_PWR_CONSTRAINT,
 };
-
+/*
 static void radio_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
                                       const struct schema_Wifi_Radio_Config *rconf)
 {
@@ -141,7 +141,7 @@ static void radio_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del
 		}
 	}
 }
-
+*/
 static void set_custom_option_state(struct schema_Wifi_Radio_State *rstate,
                                     int *index, const char *key,
                                     const char *value)
@@ -374,12 +374,42 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 
 	char phy[6];
 	char ifname[8];
-
+	
 	strncpy(ifname, rconf->if_name, sizeof(ifname));
 	strncpy(phy, target_map_ifname(ifname), sizeof(phy));
 
+ 	LOGN("Radio state: if_name=%s, freq_band=%s, enabled=%s, dfs_demo=%s, hw_type=%s, hw_config=%s, country=%s, channel=%s, channel_sync=%s, channel_mode=%s, hw_mode=%s, ht_mode=%s, thermal_shutdown=%s, thermal_downgrade_temp=%s, thermal_upgrade_temp=%s, thermal_integration=%s, temperature_control=%s, vif_configs=%s, tx_power=%s, bcn_int=%s, tx_chainmask=%s, rx_chainmask=%s, thermal_tx_chainmask=%s, fallback_parents=%s, zero_wait_dfs=%s, custom_options=%s",
+ (changed->if_name)? "changed":"un",
+ (changed->freq_band)? "changed":"un",
+ (changed->enabled)? "changed":"un",
+ (changed->dfs_demo)? "changed":"un",
+ (changed->hw_type)? "changed":"un",
+ (changed->hw_config)? "changed":"un",
+ (changed->country)? "changed":"un",
+ (changed->channel)? "changed":"un",
+ (changed->channel_sync)? "changed":"un",
+ (changed->channel_mode)? "changed":"un",
+ (changed->hw_mode)? "changed":"un",
+ (changed->ht_mode)? "changed":"un",
+ (changed->thermal_shutdown)? "changed":"un",
+ (changed->thermal_downgrade_temp)? "changed":"un",
+ (changed->thermal_upgrade_temp)? "changed":"un",
+ (changed->thermal_integration)? "changed":"un",
+ (changed->temperature_control)? "changed":"un",
+ (changed->vif_configs)? "changed":"un",
+ (changed->tx_power)? "changed":"un",
+ (changed->bcn_int)? "changed":"un",
+ (changed->tx_chainmask)? "changed":"un",
+ (changed->rx_chainmask)? "changed":"un",
+ (changed->thermal_tx_chainmask)? "changed":"un",
+ (changed->fallback_parents)? "changed":"un",
+ (changed->zero_wait_dfs)? "changed":"un",
+ (changed->custom_options)? "changed":"un");
+
+
 	if (changed->channel && rconf->channel) {
 		blobmsg_add_u32(&b, "channel", rconf->channel);
+		LOGI("Kiran: %s: blobmsg_add_u32 channel %d", __func__, rconf->channel);
 		rrm_radio_rebalance_channel(rconf);
 	}
 
@@ -399,7 +429,7 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 			blobmsg_add_u32(&b, "txpower", max_tx_power);
 		}
 	}
-
+/*
 	if (changed->tx_chainmask) {
 		int tx_ant_avail,txchainmask;
 		tx_ant_avail=phy_get_tx_available_antenna(phy);
@@ -492,10 +522,10 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 
 	if (changed->custom_options)
 		radio_config_custom_opt_set(&b, &del, rconf);
-
+*/
 	blob_to_uci_section(uci, "wireless", rconf->if_name, "wifi-device",
 			    b.head, &wifi_device_param, del.head);
-
+	LOGI("%s:%s uci_commit_all:chan=%d", __func__, rconf->if_name, rconf->channel);
 	uci_commit_all(uci);
 	return true;
 }

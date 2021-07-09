@@ -66,3 +66,12 @@ Index: hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
  		   settings->cs_count, settings->block_tx,
  		   settings->freq_params.freq, settings->freq_params.bandwidth,
  		   settings->freq_params.center_freq1,
+@@ -9893,7 +9893,7 @@ static int nl80211_switch_channel(void *
+ 	nla_nest_end(msg, beacon_csa);
+ 	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+ 	if (ret) {
+-		wpa_printf(MSG_DEBUG, "nl80211: switch_channel failed err=%d (%s)",
++		wpa_printf(MSG_INFO, "Kiran: nl80211: switch_channel failed err=%d (%s)",
+ 			   ret, strerror(-ret));
+ 	}
+ 	return ret;
