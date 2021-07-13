@@ -1,0 +1,740 @@
+Index: backports-20200902_001-4.4.60-931c337125/net/wireless/chan.c
+===================================================================
+--- backports-20200902_001-4.4.60-931c337125.orig/net/wireless/chan.c
++++ backports-20200902_001-4.4.60-931c337125/net/wireless/chan.c
+@@ -150,6 +150,13 @@ bool cfg80211_chandef_valid(const struct
+ 	if (chandef->freq1_offset >= 1000)
+ 		return false;
+ 
++//	printk("Kiran: chandef:from %pS %pS %pS\n", __builtin_return_address(0), __builtin_return_address(1), __builtin_return_address(2));
++
++//	printk("Kiran: chandef:width=%d, center_freq1=%d, center_freq2=%d, freq1_offset=%d\n", chandef->width, chandef->center_freq1, chandef->center_freq2, chandef->freq1_offset);
++//	printk("Kiran: chan: band=%d, center_freq=%d, freq_offset=%d\n",
++//		       	chandef->chan->band, chandef->chan->center_freq, 
++//			chandef->chan->freq_offset);
++
+ 	control_freq = chandef->chan->center_freq;
+ 
+ 	switch (chandef->width) {
+@@ -163,39 +170,57 @@ bool cfg80211_chandef_valid(const struct
+ 	case NL80211_CHAN_WIDTH_20:
+ 	case NL80211_CHAN_WIDTH_20_NOHT:
+ 		if (ieee80211_chandef_to_khz(chandef) !=
+-		    ieee80211_channel_to_khz(chandef->chan))
++		    ieee80211_channel_to_khz(chandef->chan)) {
++//			printk("Kiran: 1\n");
+ 			return false;
+-		if (chandef->center_freq2)
++		}
++		if (chandef->center_freq2) {
++//			printk("Kiran: 2\n");
+ 			return false;
++		}
+ 		break;
+ 	case NL80211_CHAN_WIDTH_40:
+ 		if (chandef->center_freq1 != control_freq + 10 &&
+-		    chandef->center_freq1 != control_freq - 10)
++		    chandef->center_freq1 != control_freq - 10) {
++//			printk("Kiran: 3\n");
+ 			return false;
+-		if (chandef->center_freq2)
++		}
++		if (chandef->center_freq2) {
++//			printk("Kiran: 4\n");
+ 			return false;
++		}
+ 		break;
+ 	case NL80211_CHAN_WIDTH_80P80:
+ 		if (chandef->center_freq1 != control_freq + 30 &&
+ 		    chandef->center_freq1 != control_freq + 10 &&
+ 		    chandef->center_freq1 != control_freq - 10 &&
+-		    chandef->center_freq1 != control_freq - 30)
++		    chandef->center_freq1 != control_freq - 30) {
++//			printk("Kiran: 5\n");
+ 			return false;
+-		if (!chandef->center_freq2)
++		}
++		if (!chandef->center_freq2) {
++//			printk("Kiran: 6\n");
+ 			return false;
++		}
+ 		/* adjacent is not allowed -- that's a 160 MHz channel */
+ 		if (chandef->center_freq1 - chandef->center_freq2 == 80 ||
+-		    chandef->center_freq2 - chandef->center_freq1 == 80)
++		    chandef->center_freq2 - chandef->center_freq1 == 80) {
++//			printk("Kiran: 7\n");
+ 			return false;
++		}
+ 		break;
+ 	case NL80211_CHAN_WIDTH_80:
+ 		if (chandef->center_freq1 != control_freq + 30 &&
+ 		    chandef->center_freq1 != control_freq + 10 &&
+ 		    chandef->center_freq1 != control_freq - 10 &&
+-		    chandef->center_freq1 != control_freq - 30)
++		    chandef->center_freq1 != control_freq - 30) {
++//			printk("Kiran: 8\n");
+ 			return false;
+-		if (chandef->center_freq2)
++		}
++		if (chandef->center_freq2) {
++//			printk("Kiran: 9\n");
+ 			return false;
++		}
+ 		break;
+ 	case NL80211_CHAN_WIDTH_160:
+ 		if (chandef->center_freq1 != control_freq + 70 &&
+@@ -205,23 +230,32 @@ bool cfg80211_chandef_valid(const struct
+ 		    chandef->center_freq1 != control_freq - 10 &&
+ 		    chandef->center_freq1 != control_freq - 30 &&
+ 		    chandef->center_freq1 != control_freq - 50 &&
+-		    chandef->center_freq1 != control_freq - 70)
++		    chandef->center_freq1 != control_freq - 70) {
++//			printk("Kiran: 10\n");
+ 			return false;
+-		if (chandef->center_freq2)
++		}	
++		if (chandef->center_freq2) {
++//			printk("Kiran: 11\n");
+ 			return false;
++		}
+ 		break;
+ 	default:
++//		printk("Kiran: 12\n");
+ 		return false;
+ 	}
+ 
+ 	/* channel 14 is only for IEEE 802.11b */
+ 	if (chandef->center_freq1 == 2484 &&
+-	    chandef->width != NL80211_CHAN_WIDTH_20_NOHT)
++	    chandef->width != NL80211_CHAN_WIDTH_20_NOHT) {
++//		printk("Kiran: 13\n");
+ 		return false;
++	}
+ 
+ 	if (cfg80211_chandef_is_edmg(chandef) &&
+-	    !cfg80211_edmg_chandef_valid(chandef))
++	    !cfg80211_edmg_chandef_valid(chandef)) {
++//		printk("Kiran: 14\n");
+ 		return false;
++	}
+ 
+ 	return true;
+ }
+@@ -844,8 +878,16 @@ static bool cfg80211_secondary_chans_ok(
+ 
+ 	for (freq = start_freq; freq <= end_freq; freq += MHZ_TO_KHZ(20)) {
+ 		c = ieee80211_get_channel_khz(wiphy, freq);
+-		if (!c || c->flags & prohibited_flags)
++		if (!c || c->flags & prohibited_flags) {
++	start_freq = cfg80211_get_start_freq(center_freq, bandwidth);
++	end_freq = cfg80211_get_end_freq(center_freq, bandwidth);
++
++	for (freq = start_freq; freq <= end_freq; freq += MHZ_TO_KHZ(20)) {
++		c = ieee80211_get_channel_khz(wiphy, freq);
++//	printk("Ki2:%s:%d: %d:c->flags=%x , pf=%x\n", __func__, __LINE__,c->center_freq, c->flags, prohibited_flags);
++	}
+ 			return false;
++		}
+ 	}
+ 
+ 	return true;
+@@ -913,6 +955,7 @@ bool cfg80211_chandef_usable(struct wiph
+ 	struct ieee80211_edmg *edmg_cap;
+ 	u32 width, control_freq, cap;
+ 
++//	printk("%s:%d: pf:%x\n", __func__, __LINE__, prohibited_flags);
+ 	if (WARN_ON(!cfg80211_chandef_valid(chandef)))
+ 		return false;
+ 
+@@ -925,8 +968,10 @@ bool cfg80211_chandef_usable(struct wiph
+ 				  chandef->edmg.channels,
+ 				  chandef->edmg.bw_config,
+ 				  chandef->chan->hw_value,
+-				  edmg_cap))
++				  edmg_cap)) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 		return false;
++	}
+ 
+ 	control_freq = chandef->chan->center_freq;
+ 
+@@ -955,54 +1000,76 @@ bool cfg80211_chandef_usable(struct wiph
+ 		break;
+ 	case NL80211_CHAN_WIDTH_20:
+ 		if (!ht_cap->ht_supported &&
+-		    chandef->chan->band != NL80211_BAND_6GHZ)
++		    chandef->chan->band != NL80211_BAND_6GHZ) {
++
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		/* fall through */
+ 	case NL80211_CHAN_WIDTH_20_NOHT:
+ 		prohibited_flags |= IEEE80211_CHAN_NO_20MHZ;
+ 		width = 20;
+ 		break;
+ 	case NL80211_CHAN_WIDTH_40:
++
+ 		width = 40;
+ 		if (chandef->chan->band == NL80211_BAND_6GHZ)
+ 			break;
+-		if (!ht_cap->ht_supported)
++		if (!ht_cap->ht_supported) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		if (!(ht_cap->cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40) ||
+-		    ht_cap->cap & IEEE80211_HT_CAP_40MHZ_INTOLERANT)
++		    ht_cap->cap & IEEE80211_HT_CAP_40MHZ_INTOLERANT) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		if (chandef->center_freq1 < control_freq &&
+-		    chandef->chan->flags & IEEE80211_CHAN_NO_HT40MINUS)
++		    chandef->chan->flags & IEEE80211_CHAN_NO_HT40MINUS) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		if (chandef->center_freq1 > control_freq &&
+-		    chandef->chan->flags & IEEE80211_CHAN_NO_HT40PLUS)
++		    chandef->chan->flags & IEEE80211_CHAN_NO_HT40PLUS) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
++
+ 		break;
+ 	case NL80211_CHAN_WIDTH_80P80:
+ 		cap = vht_cap->cap & IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK;
+ 		if (chandef->chan->band != NL80211_BAND_6GHZ &&
+-		    cap != IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ)
++		    cap != IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		/* fall through */
+ 	case NL80211_CHAN_WIDTH_80:
+ 		prohibited_flags |= IEEE80211_CHAN_NO_80MHZ;
+ 		width = 80;
+ 		if (chandef->chan->band == NL80211_BAND_6GHZ)
+ 			break;
+-		if (!vht_cap->vht_supported)
++		if (!vht_cap->vht_supported) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
++
+ 		break;
+ 	case NL80211_CHAN_WIDTH_160:
+ 		prohibited_flags |= IEEE80211_CHAN_NO_160MHZ;
+ 		width = 160;
+ 		if (chandef->chan->band == NL80211_BAND_6GHZ)
+ 			break;
+-		if (!vht_cap->vht_supported)
++		if (!vht_cap->vht_supported) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		cap = vht_cap->cap & IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK;
+ 		if (cap != IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ &&
+-		    cap != IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ)
++		    cap != IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 			return false;
++		}
+ 		break;
+ 	default:
+ 		WARN_ON_ONCE(1);
+@@ -1030,11 +1097,17 @@ bool cfg80211_chandef_usable(struct wiph
+ 
+ 	if (!cfg80211_secondary_chans_ok(wiphy,
+ 					 ieee80211_chandef_to_khz(chandef),
+-					 width, prohibited_flags))
++					 width, prohibited_flags)) {
++//	printk("%s:%d\n", __func__, __LINE__);
+ 		return false;
++	}
+ 
+-	if (!chandef->center_freq2)
++//	printk("Ki1:%s:%d:cf2=%d\n", __func__, __LINE__,chandef->center_freq2);
++	if (!chandef->center_freq2) {
++
++//	printk("%s:%d\n", __func__, __LINE__);
+ 		return true;
++	}
+ 	return cfg80211_secondary_chans_ok(wiphy,
+ 					   MHZ_TO_KHZ(chandef->center_freq2),
+ 					   width, prohibited_flags);
+@@ -1156,6 +1229,7 @@ static bool _cfg80211_reg_can_beacon(str
+ 	if (check_no_ir)
+ 		prohibited_flags |= IEEE80211_CHAN_NO_IR;
+ 
++//	printk("Ki1:%s:%d:prohibited ch:%d: %d %d\n", __func__, __LINE__, chandef->center_freq1, cfg80211_chandef_dfs_required(wiphy, chandef, iftype), cfg80211_chandef_dfs_available(wiphy, chandef));
+ 	if (cfg80211_chandef_dfs_required(wiphy, chandef, iftype) > 0 &&
+ 	    cfg80211_chandef_dfs_available(wiphy, chandef)) {
+ 		/* We can skip IEEE80211_CHAN_NO_IR if chandef dfs available */
+Index: backports-20200902_001-4.4.60-931c337125/net/wireless/nl80211.c
+===================================================================
+--- backports-20200902_001-4.4.60-931c337125.orig/net/wireless/nl80211.c
++++ backports-20200902_001-4.4.60-931c337125/net/wireless/nl80211.c
+@@ -2921,6 +2921,7 @@ int nl80211_parse_chandef(struct cfg8021
+ 	struct nlattr **attrs = info->attrs;
+ 	u32 control_freq;
+ 
++//	printk("%s:%d\n", __func__, __LINE__);
+ 	if (!attrs[NL80211_ATTR_WIPHY_FREQ])
+ 		return -EINVAL;
+ 
+@@ -3038,6 +3039,7 @@ static int __nl80211_set_channel(struct
+ 	enum nl80211_iftype iftype = NL80211_IFTYPE_MONITOR;
+ 	struct wireless_dev *wdev = NULL;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (dev)
+ 		wdev = dev->ieee80211_ptr;
+ 	if (!nl80211_can_set_dev_channel(wdev))
+@@ -3135,7 +3137,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	u32 txq_limit = 0, txq_memory_limit = 0, txq_quantum = 0;
+ 
+ 	ASSERT_RTNL();
+-
++	printk("%s:%d\n", __func__, __LINE__);
+ 	/*
+ 	 * Try to find the wiphy and netdev. Normally this
+ 	 * function shouldn't need the netdev, but this is
+@@ -3147,6 +3149,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	 */
+ 
+ 	if (info->attrs[NL80211_ATTR_IFINDEX]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		int ifindex = nla_get_u32(info->attrs[NL80211_ATTR_IFINDEX]);
+ 
+ 		netdev = __dev_get_by_index(genl_info_net(info), ifindex);
+@@ -3180,6 +3183,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 		return result;
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_TXQ_PARAMS]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		struct ieee80211_txq_params txq_params;
+ 		struct nlattr *tb[NL80211_TXQ_ATTR_MAX + 1];
+ 
+@@ -3218,6 +3222,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_FREQ]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		result = __nl80211_set_channel(
+ 			rdev,
+ 			nl80211_can_set_dev_channel(wdev) ? netdev : NULL,
+@@ -3227,6 +3232,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_TX_POWER_SETTING]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		struct wireless_dev *txp_wdev = wdev;
+ 		enum nl80211_tx_power_setting type;
+ 		int idx, mbm = 0;
+@@ -3256,6 +3262,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_ANTENNA_TX] &&
+ 	    info->attrs[NL80211_ATTR_WIPHY_ANTENNA_RX]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		u32 tx_ant, rx_ant;
+ 
+ 		if ((!rdev->wiphy.available_antennas_tx &&
+@@ -3283,6 +3290,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	changed = 0;
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_RETRY_SHORT]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		retry_short = nla_get_u8(
+ 			info->attrs[NL80211_ATTR_WIPHY_RETRY_SHORT]);
+ 
+@@ -3290,6 +3298,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_RETRY_LONG]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		retry_long = nla_get_u8(
+ 			info->attrs[NL80211_ATTR_WIPHY_RETRY_LONG]);
+ 
+@@ -3297,6 +3306,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_FRAG_THRESHOLD]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		frag_threshold = nla_get_u32(
+ 			info->attrs[NL80211_ATTR_WIPHY_FRAG_THRESHOLD]);
+ 		if (frag_threshold < 256)
+@@ -3315,12 +3325,14 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_RTS_THRESHOLD]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		rts_threshold = nla_get_u32(
+ 			info->attrs[NL80211_ATTR_WIPHY_RTS_THRESHOLD]);
+ 		changed |= WIPHY_PARAM_RTS_THRESHOLD;
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_COVERAGE_CLASS]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		if (info->attrs[NL80211_ATTR_WIPHY_DYN_ACK])
+ 			return -EINVAL;
+ 
+@@ -3330,6 +3342,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_DYN_ACK]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		if (!(rdev->wiphy.features & NL80211_FEATURE_ACKTO_ESTIMATION))
+ 			return -EOPNOTSUPP;
+ 
+@@ -3337,6 +3350,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_TXQ_LIMIT]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+ 					     NL80211_EXT_FEATURE_TXQS))
+ 			return -EOPNOTSUPP;
+@@ -3346,6 +3360,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_TXQ_MEMORY_LIMIT]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+ 					     NL80211_EXT_FEATURE_TXQS))
+ 			return -EOPNOTSUPP;
+@@ -3355,6 +3370,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_TXQ_QUANTUM]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+ 					     NL80211_EXT_FEATURE_TXQS))
+ 			return -EOPNOTSUPP;
+@@ -3364,6 +3380,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 	}
+ 
+ 	if (changed) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		u8 old_retry_short, old_retry_long;
+ 		u32 old_frag_threshold, old_rts_threshold;
+ 		u8 old_coverage_class;
+@@ -5109,6 +5126,7 @@ static int nl80211_start_ap(struct sk_bu
+ 	struct cfg80211_ap_settings params;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (dev->ieee80211_ptr->iftype != NL80211_IFTYPE_AP &&
+ 	    dev->ieee80211_ptr->iftype != NL80211_IFTYPE_P2P_GO)
+ 		return -EOPNOTSUPP;
+@@ -8076,6 +8094,7 @@ static int nl80211_trigger_scan(struct s
+ 
+ 	wiphy = &rdev->wiphy;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (wdev->iftype == NL80211_IFTYPE_NAN)
+ 		return -EOPNOTSUPP;
+ 
+@@ -8915,6 +8934,7 @@ static int nl80211_start_radar_detection
+ 	unsigned int cac_time_ms;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	dfs_region = reg_get_dfs_region(wiphy);
+ 	if (dfs_region == NL80211_DFS_UNSET)
+ 		return -EINVAL;
+@@ -8971,6 +8991,7 @@ static int nl80211_notify_radar_detectio
+ 	enum nl80211_dfs_regions dfs_region;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	dfs_region = reg_get_dfs_region(wiphy);
+ 	if (dfs_region == NL80211_DFS_UNSET) {
+ 		GENL_SET_ERR_MSG(info,
+@@ -9030,9 +9051,12 @@ static int nl80211_channel_switch(struct
+ 	int len, i;
+ 	u32 cs_count;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (!rdev->ops->channel_switch ||
+-	    !(rdev->wiphy.flags & WIPHY_FLAG_HAS_CHANNEL_SWITCH))
++	    !(rdev->wiphy.flags & WIPHY_FLAG_HAS_CHANNEL_SWITCH)) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EOPNOTSUPP;
++	}
+ 
+ 	switch (dev->ieee80211_ptr->iftype) {
+ 	case NL80211_IFTYPE_AP:
+@@ -9046,8 +9070,10 @@ static int nl80211_channel_switch(struct
+ 		need_handle_dfs_flag = false;
+ 
+ 		/* useless if AP is not running */
+-		if (!wdev->beacon_interval)
++		if (!wdev->beacon_interval) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 			return -ENOTCONN;
++		}
+ 		break;
+ 	case NL80211_IFTYPE_ADHOC:
+ 		if (!wdev->ssid_len)
+@@ -9058,6 +9084,7 @@ static int nl80211_channel_switch(struct
+ 			return -ENOTCONN;
+ 		break;
+ 	default:
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EOPNOTSUPP;
+ 	}
+ 
+@@ -9065,19 +9092,26 @@ static int nl80211_channel_switch(struct
+ 	params.beacon_csa.ftm_responder = -1;
+ 
+ 	if (!info->attrs[NL80211_ATTR_WIPHY_FREQ] ||
+-	    !info->attrs[NL80211_ATTR_CH_SWITCH_COUNT])
++	    !info->attrs[NL80211_ATTR_CH_SWITCH_COUNT]) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	/* only important for AP, IBSS and mesh create IEs internally */
+-	if (need_new_beacon && !info->attrs[NL80211_ATTR_CSA_IES])
++	if (need_new_beacon && !info->attrs[NL80211_ATTR_CSA_IES]) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	/* Even though the attribute is u32, the specification says
+ 	 * u8, so let's make sure we don't overflow.
+ 	 */
+ 	cs_count = nla_get_u32(info->attrs[NL80211_ATTR_CH_SWITCH_COUNT]);
+-	if (cs_count > 255)
++	if (cs_count > 255) {
++
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	params.count = cs_count;
+ 
+@@ -9085,32 +9119,47 @@ static int nl80211_channel_switch(struct
+ 		goto skip_beacons;
+ 
+ 	err = nl80211_parse_beacon(rdev, info->attrs, &params.beacon_after);
+-	if (err)
++	if (err) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return err;
++	}
+ 
+ 	err = nla_parse_nested_deprecated(csa_attrs, NL80211_ATTR_MAX,
+ 					  info->attrs[NL80211_ATTR_CSA_IES],
+ 					  nl80211_policy,
+ 					  genl_info_extack(info));
+-	if (err)
++	if (err) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return err;
++	}
+ 
+ 	err = nl80211_parse_beacon(rdev, csa_attrs, &params.beacon_csa);
+-	if (err)
++	if (err) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return err;
++	}
++
++	if (!csa_attrs[NL80211_ATTR_CNTDWN_OFFS_BEACON]) {
+ 
+-	if (!csa_attrs[NL80211_ATTR_CNTDWN_OFFS_BEACON])
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	len = nla_len(csa_attrs[NL80211_ATTR_CNTDWN_OFFS_BEACON]);
+-	if (!len || (len % sizeof(u16)))
++	if (!len || (len % sizeof(u16))) {
++
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	params.n_counter_offsets_beacon = len / sizeof(u16);
+ 	if (rdev->wiphy.max_num_csa_counters &&
+ 	    (params.n_counter_offsets_beacon >
+-	     rdev->wiphy.max_num_csa_counters))
++	     rdev->wiphy.max_num_csa_counters)) {
++
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	params.counter_offsets_beacon =
+ 		nla_data(csa_attrs[NL80211_ATTR_CNTDWN_OFFS_BEACON]);
+@@ -9119,23 +9168,35 @@ static int nl80211_channel_switch(struct
+ 	for (i = 0; i < params.n_counter_offsets_beacon; i++) {
+ 		u16 offset = params.counter_offsets_beacon[i];
+ 
+-		if (offset >= params.beacon_csa.tail_len)
++		if (offset >= params.beacon_csa.tail_len) {
++
++		printk("%s:%d:\n", __func__, __LINE__);
+ 			return -EINVAL;
++		}
++
++		if (params.beacon_csa.tail[offset] != params.count) {
+ 
+-		if (params.beacon_csa.tail[offset] != params.count)
++		printk("%s:%d:\n", __func__, __LINE__);
+ 			return -EINVAL;
++		}
+ 	}
+ 
+ 	if (csa_attrs[NL80211_ATTR_CNTDWN_OFFS_PRESP]) {
+ 		len = nla_len(csa_attrs[NL80211_ATTR_CNTDWN_OFFS_PRESP]);
+-		if (!len || (len % sizeof(u16)))
++		if (!len || (len % sizeof(u16))) {
++
++			printk("%s:%d:\n", __func__, __LINE__);
+ 			return -EINVAL;
++		}
+ 
+ 		params.n_counter_offsets_presp = len / sizeof(u16);
+ 		if (rdev->wiphy.max_num_csa_counters &&
+ 		    (params.n_counter_offsets_presp >
+-		     rdev->wiphy.max_num_csa_counters))
++		     rdev->wiphy.max_num_csa_counters)) {
++
++			printk("%s:%d:\n", __func__, __LINE__);
+ 			return -EINVAL;
++		}
+ 
+ 		params.counter_offsets_presp =
+ 			nla_data(csa_attrs[NL80211_ATTR_CNTDWN_OFFS_PRESP]);
+@@ -9144,34 +9205,49 @@ static int nl80211_channel_switch(struct
+ 		for (i = 0; i < params.n_counter_offsets_presp; i++) {
+ 			u16 offset = params.counter_offsets_presp[i];
+ 
+-			if (offset >= params.beacon_csa.probe_resp_len)
++			if (offset >= params.beacon_csa.probe_resp_len) {
++
++				printk("%s:%d:\n", __func__, __LINE__);
+ 				return -EINVAL;
++			}
+ 
+ 			if (params.beacon_csa.probe_resp[offset] !=
+-			    params.count)
++			    params.count) {
++
++				printk("%s:%d:\n", __func__, __LINE__);
+ 				return -EINVAL;
++			}
+ 		}
+ 	}
+ 
+ skip_beacons:
+ 	err = nl80211_parse_chandef(rdev, info, &params.chandef);
+-	if (err)
++	if (err) {
++
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return err;
++	}
+ 
+ 	if (!cfg80211_reg_can_beacon_relax(&rdev->wiphy, &params.chandef,
+-					   wdev->iftype))
++					   wdev->iftype)) {
++
++		printk("Ki1:%s:%d:\n", __func__, __LINE__);
+ 		return -EINVAL;
++	}
+ 
+ 	err = cfg80211_chandef_dfs_required(wdev->wiphy,
+ 					    &params.chandef,
+ 					    wdev->iftype);
+-	if (err < 0)
++	if (err < 0) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 		return err;
++	}
+ 
+ 	if (err > 0) {
+ 		params.radar_required = true;
+ 		if (need_handle_dfs_flag &&
+ 		    !nla_get_flag(info->attrs[NL80211_ATTR_HANDLE_DFS])) {
++		printk("%s:%d:\n", __func__, __LINE__);
+ 			return -EINVAL;
+ 		}
+ 	}
+@@ -9179,6 +9255,7 @@ skip_beacons:
+ 	if (info->attrs[NL80211_ATTR_CH_SWITCH_BLOCK_TX])
+ 		params.block_tx = true;
+ 
++	printk("%s:%d:rdev_channel_switch\n", __func__, __LINE__);
+ 	wdev_lock(wdev);
+ 	err = rdev_channel_switch(rdev, dev, &params);
+ 	wdev_unlock(wdev);
+@@ -10036,6 +10113,7 @@ static int nl80211_join_ibss(struct sk_b
+ 	struct cfg80211_cached_keys *connkeys = NULL;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	memset(&ibss, 0, sizeof(ibss));
+ 
+ 	if (!info->attrs[NL80211_ATTR_SSID] ||
+@@ -11016,6 +11094,7 @@ static int nl80211_remain_on_channel(str
+ 	u32 duration;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (!info->attrs[NL80211_ATTR_WIPHY_FREQ] ||
+ 	    !info->attrs[NL80211_ATTR_DURATION])
+ 		return -EINVAL;
+@@ -11644,11 +11723,13 @@ static int nl80211_join_mesh(struct sk_b
+ 	struct mesh_setup setup;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	/* start with default */
+ 	memcpy(&cfg, &default_mesh_config, sizeof(cfg));
+ 	memcpy(&setup, &default_mesh_setup, sizeof(setup));
+ 
+ 	if (info->attrs[NL80211_ATTR_MESH_CONFIG]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		/* and parse parameters if given */
+ 		err = nl80211_parse_mesh_config(info, &cfg, NULL);
+ 		if (err)
+@@ -11696,6 +11777,7 @@ static int nl80211_join_mesh(struct sk_b
+ 		cfg.auto_open_plinks = false;
+ 
+ 	if (info->attrs[NL80211_ATTR_WIPHY_FREQ]) {
++	printk("%s:%d\n", __func__, __LINE__);
+ 		err = nl80211_parse_chandef(rdev, info, &setup.chandef);
+ 		if (err)
+ 			return err;
+@@ -14013,6 +14095,7 @@ static int nl80211_tdls_channel_switch(s
+ 	u8 oper_class;
+ 	int err;
+ 
++	printk("%s:%d\n", __func__, __LINE__);
+ 	if (!rdev->ops->tdls_channel_switch ||
+ 	    !(rdev->wiphy.features & NL80211_FEATURE_TDLS_CHANNEL_SWITCH))
+ 		return -EOPNOTSUPP;
+Index: backports-20200902_001-4.4.60-931c337125/net/wireless/reg.c
+===================================================================
+--- backports-20200902_001-4.4.60-931c337125.orig/net/wireless/reg.c
++++ backports-20200902_001-4.4.60-931c337125/net/wireless/reg.c
+@@ -1730,12 +1730,12 @@ static void handle_channel(struct wiphy
+ 		if (lr->initiator == NL80211_REGDOM_SET_BY_DRIVER &&
+ 		    request_wiphy && request_wiphy == wiphy &&
+ 		    request_wiphy->regulatory_flags & REGULATORY_STRICT_REG) {
+-			pr_debug("Disabling freq %d.%03d MHz for good\n",
++			printk("Disabling freq %d.%03d MHz for good\n",
+ 				 chan->center_freq, chan->freq_offset);
+ 			chan->orig_flags |= IEEE80211_CHAN_DISABLED;
+ 			chan->flags = chan->orig_flags;
+ 		} else {
+-			pr_debug("Disabling freq %d.%03d MHz\n",
++			printk("Disabling freq %d.%03d MHz\n",
+ 				 chan->center_freq, chan->freq_offset);
+ 			chan->flags |= IEEE80211_CHAN_DISABLED;
+ 		}

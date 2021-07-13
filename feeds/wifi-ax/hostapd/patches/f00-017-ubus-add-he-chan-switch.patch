@@ -18,17 +18,243 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  	[CSA_BLOCK_TX] = { "block_tx", BLOBMSG_TYPE_BOOL },
  };
  
-@@ -783,8 +785,10 @@ hostapd_switch_chan(struct ubus_context
+@@ -751,6 +753,158 @@ static int hostapd_get_chan_switch_event
+ 
+ 	return 0;
+ }
++/*
++	ieee80211_freq_to_chan(params->center_freq2,
++			       &seg1);
++*/
++struct hostapd_channel_data *freq_to_chan(struct hostapd_iface *iface, int freq)
++//			      struct hostapd_channel_data *chan)
++{
++	struct hostapd_hw_modes *mode;
++	struct hostapd_channel_data *chan;
++	int i;
++
++	wpa_printf(MSG_INFO, "Kiranmi:%s: freq:%d", __func__, freq);
++	mode = iface->current_mode;
++	if (mode == NULL || freq == 0) {
++		wpa_printf(MSG_INFO, "Kiranmi:%s: mode is NULL", __func__);
++		return NULL;
++	}
++
++	for (i = 0; i < iface->current_mode->num_channels; i++) {
++		chan = &iface->current_mode->channels[i];
++//		wpa_printf(MSG_INFO, "Kiranmi:%s: search freq %d", __func__, chan->freq);
++		if (chan->freq == freq) {
++		wpa_printf(MSG_INFO, "Kiranmi:%s:found %p chan %d, flag=%x", __func__, chan, chan->chan, chan->flag);
++			return chan; /* Channel found */
++		}
++	}
++	return NULL;
++}
++
++int hostapd_switch_chan_dfs(struct hostapd_iface *iface,
++			     struct csa_settings *css)
++{
++	struct hostapd_channel_data *ch, *cf1, *cf2 = NULL;
++	int ch_id, cf0_id, cf1_id = 0;
++	int res = 0;
++	int  bw = CHANWIDTH_USE_HT;
++	if (iface == NULL)
++		return;
++
++	if (css->freq_params.freq > 0) {
++		ch = freq_to_chan(iface, css->freq_params.freq);
++		ch_id = ch->chan;
++	}
++
++	if (css->freq_params.center_freq1 > 0) {
++		cf0_id = 36 + (css->freq_params.center_freq1 - 5180) / 5;
++//		cf1 = freq_to_chan(iface, css->freq_params.center_freq1);
++//		cf0_id = cf1->chan;
++	}
++
++	if (css->freq_params.center_freq2 > 0) {
++		cf1_id = 36 + (css->freq_params.center_freq2 - 5180) / 5;
++//		cf2 = freq_to_chan(iface, css->freq_params.center_freq2);
++//		cf1_id = cf2->chan;
++	}
++/*	
++	wpa_printf(MSG_INFO, "Kiranmi: freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds, ieee80211n=%d, ieee80211ac=%d, ieee80211ax=%d ",
++		iface->freq,
++		iface->conf->channel, iface->conf->secondary_channel,
++		hostapd_get_oper_chwidth(iface->conf),
++		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
++		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
++		iface->dfs_cac_ms / 1000, iface->conf->ieee80211n, iface->conf->ieee80211ac, iface->conf->ieee80211ax);
++*/
++	wpa_printf(MSG_INFO, "Kiranmi: freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds, ieee80211n=%d, ieee80211ac=%d, ieee80211ax=%d ",
++		css->freq_params.freq,
++		ch_id, css->freq_params.sec_channel_offset,
++		css->freq_params.bandwidth, cf0_id, cf1_id,
++		iface->dfs_cac_ms / 1000, iface->conf->ieee80211n,
++		iface->conf->ieee80211ac, iface->conf->ieee80211ax);
++
++
++#if 1 //reload iface method
++
++	switch (css->freq_params.bandwidth) {
++	case 0:
++	case 20:
++	case 40:
++		bw = CHANWIDTH_USE_HT;
++		break;
++	case 80:
++		if (css->freq_params.center_freq2)
++			bw = CHANWIDTH_80P80MHZ;
++		else
++			bw = CHANWIDTH_80MHZ;
++		break;
++	case 160:
++		bw = CHANWIDTH_160MHZ;
++		break;
++	default:
++		wpa_printf(MSG_WARNING, "Unknown CSA bandwidth: %d",
++			   css->freq_params.bandwidth);
++		break;
++	}
++
++
++
++
++	iface->freq = css->freq_params.freq;
++	iface->conf->channel = ch_id;
++	iface->conf->secondary_channel = css->freq_params.sec_channel_offset;
++	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, cf0_id);
++	hostapd_set_oper_centr_freq_seg1_idx(iface->conf, cf1_id);
++	hostapd_set_oper_chwidth(iface->conf, bw);
++	iface->conf->ieee80211n = css->freq_params.ht_enabled;
++	iface->conf->ieee80211ac = css->freq_params.vht_enabled;
++	iface->conf->ieee80211ax = css->freq_params.he_enabled;
++
++	wpa_printf(MSG_INFO, "%s Kiranmic: iface_ptr=%p freq=%d chan=%d sec_ch=%d cf0=%d cf1=%d bw=%d 11n=%d, ac=%d, ax=%d",
++ 		   __func__, iface, iface->freq, iface->conf->channel,
++		   iface->conf->secondary_channel, cf0_id, cf1_id, 
++		   css->freq_params.bandwidth, iface->conf->ieee80211n,
++		   iface->conf->ieee80211ac, iface->conf->ieee80211ax);
++
++	hostapd_disable_iface(iface);
++	wpa_printf(MSG_INFO, "%s Kiranmic: iface_ptr=%p freq=%d chan=%d sec_ch=%d cf0=%d cf1=%d bw=%d 11n=%d, ac=%d, ax=%d",
++ 		   __func__, iface, iface->freq, iface->conf->channel,
++		   iface->conf->secondary_channel, cf0_id, cf1_id, 
++		   css->freq_params.bandwidth, iface->conf->ieee80211n,
++		   iface->conf->ieee80211ac, iface->conf->ieee80211ax);
++
++	hostapd_enable_iface(iface);
++
++#endif	
++
++#if 0
++	/* Finally start CAC */
++	hostapd_set_state(iface, HAPD_IFACE_DFS);
++	wpa_printf(MSG_INFO, "Kiran: DFS start CAC on %d MHz", css->freq_params.freq);/*
++	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
++		"freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds",
++		iface->freq,
++		iface->conf->channel, iface->conf->secondary_channel,
++		hostapd_get_oper_chwidth(iface->conf),
++		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
++		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
++		iface->dfs_cac_ms / 1000);
++*/
++	res = hostapd_start_dfs_cac(
++		iface, iface->conf->hw_mode, css->freq_params.freq, ch_id,
++		iface->conf->ieee80211n, iface->conf->ieee80211ac,
++		iface->conf->ieee80211ax,
++		css->freq_params.sec_channel_offset,
++		css->freq_params.bandwidth, cf0_id, cf1_id);
++
++	if (res) {
++		wpa_printf(MSG_ERROR, "DFS start_dfs_cac() failed, %d", res);
++		return -1;
++	}
++#endif
++}
++
+ 
+ static int
+ hostapd_switch_chan(struct ubus_context *ctx, struct ubus_object *obj,
+@@ -759,7 +913,10 @@ hostapd_switch_chan(struct ubus_context
+ {
+ 	struct blob_attr *tb[__CSA_MAX];
+ 	struct hostapd_data *hapd = get_hapd_from_object(obj);
++	struct hostapd_iface *iface = hapd->iface;
++	struct hostapd_channel_data *chan =NULL;
+ 	struct csa_settings css;
++	int freq = 0;
+ 	int i;
+ 
+ 	blobmsg_parse(csa_policy, __CSA_MAX, tb, blob_data(msg), blob_len(msg));
+@@ -767,6 +924,15 @@ hostapd_switch_chan(struct ubus_context
+ 	if (!tb[CSA_FREQ])
+ 		return UBUS_STATUS_INVALID_ARGUMENT;
+ 
++	wpa_printf(MSG_INFO, "Kiranmi:%s", __func__);
++	freq = blobmsg_get_u32(tb[CSA_FREQ]);
++	chan = freq_to_chan(iface, freq);
++	if (chan != NULL)
++		wpa_printf(MSG_INFO, "Kiranmi2:%s %p chan=%d, flag=%x", __func__, chan, chan->chan, chan->flag);
++	else 
++		wpa_printf(MSG_INFO, "Kiranmi2:%s: chan is NULL", __func__);
++
++
+ 	memset(&css, 0, sizeof(css));
+ 	css.freq_params.freq = blobmsg_get_u32(tb[CSA_FREQ]);
+ 
+@@ -783,8 +949,22 @@ hostapd_switch_chan(struct ubus_context
  	SET_CSA_SETTING(CSA_SEC_CHANNEL_OFFSET, freq_params.sec_channel_offset, u32);
  	SET_CSA_SETTING(CSA_HT, freq_params.ht_enabled, bool);
  	SET_CSA_SETTING(CSA_VHT, freq_params.vht_enabled, bool);
 +	SET_CSA_SETTING(CSA_HE, freq_params.he_enabled, bool);
  	SET_CSA_SETTING(CSA_BLOCK_TX, block_tx, bool);
  
-+	wpa_printf(MSG_INFO, "Kiran:%s", __func__);
++	wpa_printf(MSG_INFO, "Kiranmi:CSS freq=%d chan=%d sec_chan_off=%d, width=%d, seg0=%d, seg1=%d",
++		css.freq_params.freq,
++		chan->chan, css.freq_params.sec_channel_offset,
++		css.freq_params.bandwidth,
++		css.freq_params.center_freq1,
++		css.freq_params.center_freq2);
++
++	if (chan->flag & HOSTAPD_CHAN_RADAR) {
++		wpa_printf(MSG_INFO, "Kiranmi:%s: is DFS channel", __func__);
++		hostapd_switch_chan_dfs(iface, &css);
++		return UBUS_STATUS_OK;
++	}
++
  	for (i = 0; i < hapd->iface->num_bss; i++) {
  		if (hostapd_switch_channel(hapd->iface->bss[i], &css) != 0)
  			return UBUS_STATUS_NOT_SUPPORTED;
+@@ -1445,16 +1625,23 @@ void hostapd_ubus_free_bss(struct hostap
+ 	if (!ctx)
+ 		return;
+ 
++	wpa_printf(MSG_INFO,"Kiran51.1.1: %s", __func__);
+ 	if (obj->id) {
+ 		ubus_remove_object(ctx, obj);
+ 		hostapd_ubus_ref_dec();
+ 	}
+ 
++	wpa_printf(MSG_INFO,"Kiran51.1.2: %s", __func__);
+ 	free(name);
+-	for (size_t i = 0; i < bss_nr; i++)
+-		os_free(bss_lst[i]);
+-	free(bss_lst);
+-	bss_lst = NULL;
++	wpa_printf(MSG_INFO,"Kiran51.1.3: %s", __func__);
++	if (bss_lst != NULL) {
++		for (size_t i = 0; i < bss_nr; i++)
++			os_free(bss_lst[i]);
++		wpa_printf(MSG_INFO,"Kiran51.1.4: %s", __func__);
++		free(bss_lst);
++		wpa_printf(MSG_INFO,"Kiran51.1.5: %s", __func__);
++		bss_lst = NULL;
++	}
+ }
+ 
+ static int hostapd_get_bss_list(struct ubus_context *ctx,
 Index: hostapd-2020-07-02-58b384f4/src/ap/ap_drv_ops.h
 ===================================================================
 --- hostapd-2020-07-02-58b384f4.orig/src/ap/ap_drv_ops.h
@@ -45,7 +271,235 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
 ===================================================================
 --- hostapd-2020-07-02-58b384f4.orig/src/ap/hostapd.c
 +++ hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
-@@ -3665,6 +3665,7 @@ static int hostapd_fill_csa_settings(str
+@@ -428,6 +428,7 @@ static int hostapd_broadcast_wep_set(str
+ static void hostapd_free_hapd_data(struct hostapd_data *hapd)
+ {
+ 	os_free(hapd->probereq_cb);
++	wpa_printf(MSG_INFO,"Kiran51.0: %s", __func__);
+ 	hapd->probereq_cb = NULL;
+ 	hapd->num_probereq_cb = 0;
+ 
+@@ -438,6 +439,7 @@ static void hostapd_free_hapd_data(struc
+ 	hapd->p2p_probe_resp_ie = NULL;
+ #endif /* CONFIG_P2P */
+ 
++	wpa_printf(MSG_INFO,"Kiran51.0: %s", __func__);
+ 	if (!hapd->started) {
+ 		wpa_printf(MSG_ERROR, "%s: Interface %s wasn't started",
+ 			   __func__, hapd->conf ? hapd->conf->iface : "N/A");
+@@ -448,10 +450,15 @@ static void hostapd_free_hapd_data(struc
+ 
+ 	wpa_printf(MSG_DEBUG, "%s(%s)", __func__, hapd->conf->iface);
+ 	hostapd_ubus_free_bss(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.1: %s", __func__);
+ 	accounting_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.2: %s", __func__);
+ 	hostapd_deinit_wpa(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.3: %s", __func__);
+ 	vlan_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.4: %s", __func__);
+ 	hostapd_acl_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.5: %s", __func__);
+ #ifndef CONFIG_NO_RADIUS
+ 	radius_client_deinit(hapd->radius);
+ 	hapd->radius = NULL;
+@@ -459,13 +466,16 @@ static void hostapd_free_hapd_data(struc
+ 	hapd->radius_das = NULL;
+ #endif /* CONFIG_NO_RADIUS */
+ 
++	wpa_printf(MSG_INFO,"Kiran51.6: %s", __func__);
+ 	hostapd_deinit_wps(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.7: %s", __func__);
+ 	ieee802_1x_dealloc_kay_sm_hapd(hapd);
+ #ifdef CONFIG_DPP
+ 	hostapd_dpp_deinit(hapd);
+ 	gas_query_ap_deinit(hapd->gas);
+ #endif /* CONFIG_DPP */
+ 
++	wpa_printf(MSG_INFO,"Kiran51.8: %s", __func__);
+ 	authsrv_deinit(hapd);
+ 
+ 	if (hapd->interface_added) {
+@@ -485,6 +495,7 @@ static void hostapd_free_hapd_data(struc
+ 		}
+ 	}
+ 
++	wpa_printf(MSG_INFO,"Kiran51.9: %s", __func__);
+ 	wpabuf_free(hapd->time_adv);
+ 
+ #ifdef CONFIG_INTERWORKING
+@@ -492,8 +503,11 @@ static void hostapd_free_hapd_data(struc
+ #endif /* CONFIG_INTERWORKING */
+ 
+ 	bss_load_update_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.10: %s", __func__);
+ 	ndisc_snoop_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.11: %s", __func__);
+ 	dhcp_snoop_deinit(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.12: %s", __func__);
+ 	x_snoop_deinit(hapd);
+ 
+ #ifdef CONFIG_SQLITE
+@@ -505,12 +519,14 @@ static void hostapd_free_hapd_data(struc
+ 
+ #ifdef CONFIG_MESH
+ 	wpabuf_free(hapd->mesh_pending_auth);
++	wpa_printf(MSG_INFO,"Kiran51.13: %s", __func__);
+ 	hapd->mesh_pending_auth = NULL;
+ 	/* handling setup failure is already done */
+ 	hapd->setup_complete_cb = NULL;
+ #endif /* CONFIG_MESH */
+ 
+ 	hostapd_clean_rrm(hapd);
++	wpa_printf(MSG_INFO,"Kiran51.14: %s", __func__);
+ 	fils_hlp_deinit(hapd);
+ 
+ #ifdef CONFIG_OCV
+@@ -528,6 +544,7 @@ static void hostapd_free_hapd_data(struc
+ 			os_free(q);
+ 		}
+ 	}
++	wpa_printf(MSG_INFO,"Kiran51.15: %s", __func__);
+ 	eloop_cancel_timeout(auth_sae_process_commit, hapd, NULL);
+ #endif /* CONFIG_SAE */
+ #ifdef CONFIG_IEEE80211AX
+@@ -1661,7 +1678,11 @@ static int setup_interface(struct hostap
+ 	 * to 1. Clear it here so any other key/station deletion, which is not
+ 	 * part of a teardown flow, would also call the relevant driver
+ 	 * callbacks.
+-	 */
++	 */		wpa_printf(MSG_INFO, "4Mode: %s  Channel: %d  "
++			   "Frequency: %d MHz",
++			   hostapd_hw_mode_txt(iface->conf->hw_mode),
++			   iface->conf->channel, iface->freq);
++
+ 	iface->driver_ap_teardown = 0;
+ 
+ 	if (!iface->phy[0]) {
+@@ -1771,6 +1792,10 @@ static int configured_fixed_chan_to_freq
+ static int setup_interface2(struct hostapd_iface *iface)
+ {
+ 	iface->wait_channel_update = 0;
++		wpa_printf(MSG_INFO, "2Mode: %s  Channel: %d  "
++			   "Frequency: %d MHz",
++			   hostapd_hw_mode_txt(iface->conf->hw_mode),
++			   iface->conf->channel, iface->freq);
+ 
+ 	if (hostapd_get_hw_features(iface)) {
+ 		/* Not all drivers support this yet, so continue without hw
+@@ -2090,7 +2115,7 @@ static int hostapd_setup_interface_compl
+ 		int res;
+ #endif /* NEED_AP_MLME */
+ 
+-		wpa_printf(MSG_DEBUG, "Mode: %s  Channel: %d  "
++		wpa_printf(MSG_INFO, "Mode: %s  Channel: %d  "
+ 			   "Frequency: %d MHz",
+ 			   hostapd_hw_mode_txt(iface->conf->hw_mode),
+ 			   iface->conf->channel, iface->freq);
+@@ -2340,6 +2365,10 @@ int hostapd_setup_interface_complete(str
+ 	struct hostapd_data *hapd = iface->bss[0];
+ 	unsigned int i;
+ 	int not_ready_in_sync_ifaces = 0;
++		wpa_printf(MSG_INFO, "3Mode: %s  Channel: %d  "
++			   "Frequency: %d MHz",
++			   hostapd_hw_mode_txt(iface->conf->hw_mode),
++			   iface->conf->channel, iface->freq);
+ 
+ 	if (!iface->need_to_start_in_sync)
+ 		return hostapd_setup_interface_complete_sync(iface, err);
+@@ -2428,7 +2457,7 @@ int hostapd_setup_interface_complete(str
+ int hostapd_setup_interface(struct hostapd_iface *iface)
+ {
+ 	int ret;
+-
++	
+ 	ret = setup_interface(iface);
+ 	if (ret) {
+ 		wpa_printf(MSG_ERROR, "%s: Unable to setup interface.",
+@@ -2818,6 +2847,10 @@ static void hostapd_deinit_driver(const
+ int hostapd_enable_iface(struct hostapd_iface *hapd_iface)
+ {
+ 	size_t j;
++		wpa_printf(MSG_INFO, "5Mode: %s  Channel: %d  "
++			   "Frequency: %d MHz",
++			   hostapd_hw_mode_txt(hapd_iface->conf->hw_mode),
++			   hapd_iface->conf->channel, hapd_iface->freq);
+ 
+ 	if (hapd_iface->bss[0]->drv_priv != NULL) {
+ 		wpa_printf(MSG_ERROR, "Interface %s already enabled",
+@@ -2840,6 +2873,7 @@ int hostapd_enable_iface(struct hostapd_
+ 	    hapd_iface->interfaces->driver_init(hapd_iface))
+ 		return -1;
+ 
++	wpa_printf("Kiran: %s", __func__);
+ 	if (hostapd_setup_interface(hapd_iface)) {
+ 		hostapd_deinit_driver(hapd_iface->bss[0]->driver,
+ 				      hapd_iface->bss[0]->drv_priv,
+@@ -2877,19 +2911,23 @@ int hostapd_disable_iface(struct hostapd
+ 	const struct wpa_driver_ops *driver;
+ 	void *drv_priv;
+ 
++	wpa_printf(MSG_INFO,"Kiran1: %s+%d", __func__, __LINE__);
+ 	if (hapd_iface == NULL)
+ 		return -1;
+ 
++	wpa_printf(MSG_INFO,"Kiran2: %s+%d", __func__, __LINE__);
+ 	if (hapd_iface->bss[0]->drv_priv == NULL) {
+ 		wpa_printf(MSG_INFO, "Interface %s already disabled",
+ 			   hapd_iface->conf->bss[0]->iface);
+ 		return -1;
+ 	}
+ 
++	wpa_printf(MSG_INFO,"Kiran3: %s+%d", __func__, __LINE__);
+ 	wpa_msg(hapd_iface->bss[0]->msg_ctx, MSG_INFO, AP_EVENT_DISABLED);
+ 	driver = hapd_iface->bss[0]->driver;
+ 	drv_priv = hapd_iface->bss[0]->drv_priv;
+ 
++	wpa_printf(MSG_INFO,"Kiran4: %s+%d", __func__, __LINE__);
+ 	hapd_iface->driver_ap_teardown =
+ 		!!(hapd_iface->drv_flags &
+ 		   WPA_DRIVER_FLAGS_AP_TEARDOWN_SUPPORT);
+@@ -2899,24 +2937,31 @@ int hostapd_disable_iface(struct hostapd
+ 		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
+ #endif /* NEED_AP_MLME */
+ 
++	wpa_printf(MSG_INFO,"Kiran5: %s+%d", __func__, __LINE__);
+ 	eloop_cancel_timeout(hostapd_dfs_test_mode_csa_timeout, hapd_iface, NULL);
+ 	/* same as hostapd_interface_deinit without deinitializing ctrl-iface */
+ 	for (j = 0; j < hapd_iface->num_bss; j++) {
++	wpa_printf(MSG_INFO,"Kiran5.%d: %s", j, __func__);
+ 		struct hostapd_data *hapd = hapd_iface->bss[j];
+ 		hostapd_bss_deinit_no_free(hapd);
++	wpa_printf(MSG_INFO,"Kiran5.0.%d: %s", j, __func__);
+ 		hostapd_free_hapd_data(hapd);
+ 	}
+ 
++	wpa_printf(MSG_INFO,"Kiran6: %s+%d", __func__, __LINE__);
+ 	hostapd_deinit_driver(driver, drv_priv, hapd_iface);
+ 
++	wpa_printf(MSG_INFO,"Kiran7: %s+%d", __func__, __LINE__);
+ 	/* From hostapd_cleanup_iface: These were initialized in
+ 	 * hostapd_setup_interface and hostapd_setup_interface_complete
+ 	 */
+ 	hostapd_cleanup_iface_partial(hapd_iface);
+ 
++	wpa_printf(MSG_INFO,"Kiran8: %s+%d", __func__, __LINE__);
+ 	wpa_printf(MSG_DEBUG, "Interface %s disabled",
+ 		   hapd_iface->bss[0]->conf->iface);
+ 	hostapd_set_state(hapd_iface, HAPD_IFACE_DISABLED);
++	wpa_printf(MSG_INFO,"Kiran9: %s+%d", __func__, __LINE__);
+ 	return 0;
+ }
+ 
+@@ -3080,6 +3125,7 @@ int hostapd_add_iface(struct hapd_interf
+ 			if (interfaces->driver_init(hapd_iface))
+ 				goto fail;
+ 
++	wpa_printf("Kiran: %s", __func__);
+ 			if (hostapd_setup_interface(hapd_iface)) {
+ 				hostapd_deinit_driver(
+ 					hapd_iface->bss[0]->driver,
+@@ -3665,6 +3711,7 @@ static int hostapd_fill_csa_settings(str
  	settings->counter_offset_beacon[1] = hapd->cs_c_off_ecsa_beacon;
  	settings->counter_offset_presp[1] = hapd->cs_c_off_ecsa_proberesp;
  
@@ -53,10 +507,46 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
  	return 0;
  }
  
+@@ -3774,6 +3821,11 @@ hostapd_switch_channel_fallback(struct h
+ 	iface->conf->ieee80211n = freq_params->ht_enabled;
+ 	iface->conf->ieee80211ac = freq_params->vht_enabled;
+ 	iface->conf->ieee80211ax = freq_params->he_enabled;
++	wpa_printf(MSG_INFO, "%s Kiranmic: iface_ptr=%p freq=%d chan=%d sec_ch=%d cf0=%d cf1=%d bw=%d 11n=%d, ac=%d, ax=%d",
++ 		   __func__, iface, iface->freq, iface->conf->channel,
++		   iface->conf->secondary_channel, seg0_idx, seg1_idx, 
++		   bw, iface->conf->ieee80211n,
++		   iface->conf->ieee80211ac, iface->conf->ieee80211ax);
+ 
+ 	/*
+ 	 * cs_params must not be cleared earlier because the freq_params
 Index: hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
 ===================================================================
 --- hostapd-2020-07-02-58b384f4.orig/src/drivers/driver_nl80211.c
 +++ hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
+@@ -9191,12 +9191,12 @@ static int nl80211_start_radar_detection
+ 	struct nl_msg *msg;
+ 	int ret;
+ 
+-	wpa_printf(MSG_DEBUG, "nl80211: Start radar detection (CAC) %d MHz (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
++	wpa_printf(MSG_INFO, "nl80211: Start radar detection (CAC) %d MHz (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
+ 		   freq->freq, freq->ht_enabled, freq->vht_enabled, freq->he_enabled,
+ 		   freq->bandwidth, freq->center_freq1, freq->center_freq2);
+ 
+ 	if (!(drv->capa.flags & WPA_DRIVER_FLAGS_RADAR)) {
+-		wpa_printf(MSG_DEBUG, "nl80211: Driver does not support radar "
++		wpa_printf(MSG_INFO, "nl80211: Driver does not support radar "
+ 			   "detection");
+ 		return -1;
+ 	}
+@@ -9210,7 +9210,7 @@ static int nl80211_start_radar_detection
+ 	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+ 	if (ret == 0)
+ 		return 0;
+-	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
++	wpa_printf(MSG_INFO, "nl80211: Failed to start radar detection: "
+ 		   "%d (%s)", ret, strerror(-ret));
+ 	return -1;
+ }
 @@ -9792,7 +9792,7 @@ static int nl80211_switch_channel(void *
  	int csa_off_len = 0;
  	int i;
@@ -75,3 +565,481 @@ Index: hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
  			   ret, strerror(-ret));
  	}
  	return ret;
+Index: hostapd-2020-07-02-58b384f4/src/ap/dfs.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/dfs.c
++++ hostapd-2020-07-02-58b384f4/src/ap/dfs.c
+@@ -111,7 +111,7 @@ static int dfs_is_chan_allowed(struct ho
+ 		allowed_no = ARRAY_SIZE(allowed_160);
+ 		break;
+ 	default:
+-		wpa_printf(MSG_DEBUG, "Unknown width for %d channels", n_chans);
++		wpa_printf(MSG_INFO, "Kiran: Unknown width for %d channels", n_chans);
+ 		break;
+ 	}
+ 
+@@ -147,8 +147,8 @@ static int dfs_chan_range_available(stru
+ 	u32 bw = num_chan_to_bw(num_chans);
+ 
+ 	if (first_chan_idx + num_chans > mode->num_channels) {
+-		wpa_printf(MSG_DEBUG,
+-			   "DFS: some channels in range not defined");
++		wpa_printf(MSG_INFO,
++			   "Kiran: DFS: some channels in range not defined");
+ 		return 0;
+ 	}
+ 
+@@ -158,7 +158,7 @@ static int dfs_chan_range_available(stru
+ 	 * If it's not allowed to use the first channel as primary, decline the
+ 	 * whole channel range. */
+ 	if (!chan_pri_allowed(first_chan)) {
+-		wpa_printf(MSG_DEBUG, "DFS: primary chanenl not allowed");
++		wpa_printf(MSG_INFO, "Kiran: DFS: primary chanenl not allowed");
+ 		return 0;
+ 	}
+ 
+@@ -166,7 +166,7 @@ static int dfs_chan_range_available(stru
+ 		chan = dfs_get_chan_data(mode, first_chan->freq + i * 20,
+ 					 first_chan_idx);
+ 		if (!chan) {
+-			wpa_printf(MSG_DEBUG, "DFS: no channel data for %d",
++			wpa_printf(MSG_INFO, "Kiran: DFS: no channel data for %d",
+ 				   first_chan->freq + i * 20);
+ 			return 0;
+ 		}
+@@ -174,13 +174,13 @@ static int dfs_chan_range_available(stru
+ 		/* HT 40 MHz secondary channel availability checked only for
+ 		 * primary channel */
+ 		if (!chan_bw_allowed(chan, bw, 1, !i)) {
+-			wpa_printf(MSG_DEBUG, "DFS: bw now allowed for %d",
++			wpa_printf(MSG_INFO, "Kiran: DFS: bw now allowed for %d",
+ 				   first_chan->freq + i * 20);
+ 			return 0;
+ 		}
+ 
+ 		if (!dfs_channel_available(chan, skip_radar)) {
+-			wpa_printf(MSG_DEBUG, "DFS: channel not available %d",
++			wpa_printf(MSG_INFO, "Kiran: DFS: channel not available %d",
+ 				   first_chan->freq + i * 20);
+ 			return 0;
+ 		}
+@@ -218,7 +218,7 @@ static int dfs_find_channel(struct hosta
+ 	mode = iface->current_mode;
+ 	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
+ 
+-	wpa_printf(MSG_DEBUG, "DFS new chan checking %d channels", n_chans);
++	wpa_printf(MSG_INFO, "Kiran: DFS new chan checking %d channels", n_chans);
+ 	for (i = 0; i < mode->num_channels; i++) {
+ 		chan = &mode->channels[i];
+ 
+@@ -227,34 +227,34 @@ static int dfs_find_channel(struct hosta
+ 		    iface->conf->secondary_channel &&
+ 		    (!dfs_is_chan_allowed(chan, n_chans) ||
+ 		     !(chan->allowed_bw & HOSTAPD_CHAN_WIDTH_40P))) {
+-			wpa_printf(MSG_DEBUG,
+-				   "DFS: channel %d (%d) is incompatible",
++			wpa_printf(MSG_INFO,
++				   "Kiran: DFS: channel %d (%d) is incompatible",
+ 				   chan->freq, chan->chan);
+ 			continue;
+ 		}
+ 
+ 		/* Skip incompatible chandefs */
+ 		if (!dfs_chan_range_available(mode, i, n_chans, skip_radar)) {
+-			wpa_printf(MSG_DEBUG,
+-				   "DFS: range not available for %d (%d)",
++			wpa_printf(MSG_INFO,
++				   "Kiran: DFS: range not available for %d (%d)",
+ 				   chan->freq, chan->chan);
+ 			continue;
+ 		}
+ 
+ 		if (!is_in_chanlist(iface, chan)) {
+-			wpa_printf(MSG_DEBUG,
+-				   "DFS: channel %d (%d) not in chanlist",
++			wpa_printf(MSG_INFO,
++				   "Kiran: DFS: channel %d (%d) not in chanlist",
+ 				   chan->freq, chan->chan);
+ 			continue;
+ 		}
+ 
+ 		if (ret_chan && idx == channel_idx) {
+-			wpa_printf(MSG_DEBUG, "Selected channel %d (%d)",
++			wpa_printf(MSG_INFO, "Kiran: Selected channel %d (%d)",
+ 				   chan->freq, chan->chan);
+ 			*ret_chan = chan;
+ 			return idx;
+ 		}
+-		wpa_printf(MSG_DEBUG, "Adding channel %d (%d)",
++		wpa_printf(MSG_INFO, "Kiran: Adding channel %d (%d)",
+ 			   chan->freq, chan->chan);
+ 		channel_idx++;
+ 	}
+@@ -299,12 +299,12 @@ static void dfs_adjust_center_freq(struc
+ 
+ 	default:
+ 		wpa_printf(MSG_INFO,
+-			   "DFS: Unsupported channel width configuration");
++			   "Kiran: DFS: Unsupported channel width configuration");
+ 		*oper_centr_freq_seg0_idx = 0;
+ 		break;
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "DFS adjusting VHT center frequency: %d, %d",
++	wpa_printf(MSG_INFO, "Kiran: DFS adjusting VHT center frequency: %d, %d",
+ 		   *oper_centr_freq_seg0_idx,
+ 		   *oper_centr_freq_seg1_idx);
+ }
+@@ -346,7 +346,7 @@ static int dfs_get_start_chan_idx(struct
+ 			break;
+ 		default:
+ 			wpa_printf(MSG_INFO,
+-				   "DFS only VHT20/40/80/160/80+80 is supported now");
++				   "Kiran: DFS only VHT20/40/80/160/80+80 is supported now");
+ 			channel_no = -1;
+ 			break;
+ 		}
+@@ -356,6 +356,7 @@ static int dfs_get_start_chan_idx(struct
+ 	mode = iface->current_mode;
+ 	for (i = 0; i < mode->num_channels; i++) {
+ 		chan = &mode->channels[i];
++		wpa_printf(MSG_INFO,"Kiran: channel_no=%d chan->chan=%d", channel_no, chan->chan);
+ 		if (chan->chan == channel_no) {
+ 			res = i;
+ 			break;
+@@ -369,6 +370,7 @@ static int dfs_get_start_chan_idx(struct
+ 		mode = iface->current_mode;
+ 		for (i = 0; i < mode->num_channels; i++) {
+ 			chan = &mode->channels[i];
++		wpa_printf(MSG_INFO,"Kiran: chan_seg1 =%d chan->chan=%d", chan_seg1, chan->chan);
+ 			if (chan->chan == chan_seg1) {
+ 				*seg1_start = i;
+ 				found = 1;
+@@ -380,15 +382,15 @@ static int dfs_get_start_chan_idx(struct
+ 	}
+ 
+ 	if (res == -1) {
+-		wpa_printf(MSG_DEBUG,
+-			   "DFS chan_idx seems wrong; num-ch: %d ch-no: %d conf-ch-no: %d 11n: %d sec-ch: %d vht-oper-width: %d",
++		wpa_printf(MSG_INFO,
++			   "Kiran: DFS chan_idx seems wrong; num-ch: %d ch-no: %d conf-ch-no: %d 11n: %d sec-ch: %d vht-oper-width: %d",
+ 			   mode->num_channels, channel_no, iface->conf->channel,
+ 			   iface->conf->ieee80211n,
+ 			   iface->conf->secondary_channel,
+ 			   hostapd_get_oper_chwidth(iface->conf));
+ 
+ 		for (i = 0; i < mode->num_channels; i++) {
+-			wpa_printf(MSG_DEBUG, "Available channel: %d",
++			wpa_printf(MSG_INFO, "Kiran: Available channel: %d",
+ 				   mode->channels[i].chan);
+ 		}
+ 	}
+@@ -485,7 +487,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+ 	int i;
+ 	u32 _rand;
+ 
+-	wpa_printf(MSG_DEBUG, "DFS: Selecting random channel");
++	wpa_printf(MSG_INFO, "Kiran: DFS: Selecting random channel");
+ 	*secondary_channel = 0;
+ 	*oper_centr_freq_seg0_idx = 0;
+ 	*oper_centr_freq_seg1_idx = 0;
+@@ -499,7 +501,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+ 
+ 	/* Get the count first */
+ 	num_available_chandefs = dfs_find_channel(iface, NULL, 0, skip_radar);
+-	wpa_printf(MSG_DEBUG, "DFS: num_available_chandefs=%d",
++	wpa_printf(MSG_INFO, "Kiran: DFS: num_available_chandefs=%d",
+ 		   num_available_chandefs);
+ 	if (num_available_chandefs == 0)
+ 		return NULL;
+@@ -509,10 +511,10 @@ dfs_get_valid_channel(struct hostapd_ifa
+ 	chan_idx = _rand % num_available_chandefs;
+ 	dfs_find_channel(iface, &chan, chan_idx, skip_radar);
+ 	if (!chan) {
+-		wpa_printf(MSG_DEBUG, "DFS: no random channel found");
++		wpa_printf(MSG_INFO, "Kiran: DFS: no random channel found");
+ 		return NULL;
+ 	}
+-	wpa_printf(MSG_DEBUG, "DFS: got random channel %d (%d)",
++	wpa_printf(MSG_INFO, "Kiran: DFS: got random channel %d (%d)",
+ 		   chan->freq, chan->chan);
+ 
+ 	/* dfs_find_channel() calculations assume HT40+ */
+@@ -540,8 +542,8 @@ dfs_get_valid_channel(struct hostapd_ifa
+ 			if (chan2 && abs(chan2->chan - chan->chan) > 12) {
+ 				/* two channels are not adjacent */
+ 				sec_chan_idx_80p80 = chan2->chan;
+-				wpa_printf(MSG_DEBUG,
+-					   "DFS: got second chan: %d (%d)",
++				wpa_printf(MSG_INFO,
++					   "Kiran: DFS: got second chan: %d (%d)",
+ 					   chan2->freq, chan2->chan);
+ 				break;
+ 			}
+@@ -552,7 +554,7 @@ dfs_get_valid_channel(struct hostapd_ifa
+ 		 */
+ 		if (sec_chan_idx_80p80 == -1) {
+ 			wpa_printf(MSG_INFO,
+-				   "DFS: failed to get chan2 for 80+80");
++				   "Kiran: DFS: failed to get chan2 for 80+80");
+ 			return NULL;
+ 		}
+ 	}
+@@ -577,7 +579,7 @@ static int set_dfs_state_freq(struct hos
+ 	if (mode == NULL)
+ 		return 0;
+ 
+-	wpa_printf(MSG_DEBUG, "set_dfs_state 0x%X for %d MHz", state, freq);
++	wpa_printf(MSG_INFO, "Kiran: set_dfs_state 0x%X for %d MHz", state, freq);
+ 	for (i = 0; i < iface->current_mode->num_channels; i++) {
+ 		chan = &iface->current_mode->channels[i];
+ 		if (chan->freq == freq) {
+@@ -638,12 +640,12 @@ static int set_dfs_state(struct hostapd_
+ 		frequency = cf1 - 70;
+ 		break;
+ 	default:
+-		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
++		wpa_printf(MSG_INFO, "Kiran: DFS chan_width %d not supported",
+ 			   chan_width);
+ 		break;
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "DFS freq: %dMHz, n_chans: %d", frequency,
++	wpa_printf(MSG_INFO, "Kiran: DFS freq: %dMHz, n_chans: %d", frequency,
+ 		   n_chans);
+ 	for (i = 0; i < n_chans; i++) {
+ 		ret += set_dfs_state_freq(iface, frequency, state);
+@@ -699,7 +701,7 @@ static int dfs_are_channels_overlapped(s
+ 		frequency = cf1 - 70;
+ 		break;
+ 	default:
+-		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
++		wpa_printf(MSG_INFO, "Kiran: DFS chan_width %d not supported",
+ 			   chan_width);
+ 		break;
+ 	}
+@@ -711,14 +713,14 @@ static int dfs_are_channels_overlapped(s
+ 		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
+ 			continue;
+ 		for (j = 0; j < radar_n_chans; j++) {
+-			wpa_printf(MSG_DEBUG, "checking our: %d, radar: %d",
++			wpa_printf(MSG_INFO, "Kiran: checking our: %d, radar: %d",
+ 				   chan->chan, radar_chan + j * 4);
+ 			if (chan->chan == radar_chan + j * 4)
+ 				res++;
+ 		}
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "overlapped: %d", res);
++	wpa_printf(MSG_INFO, "Kiran: overlapped: %d", res);
+ 
+ 	return res;
+ }
+@@ -766,13 +768,16 @@ int hostapd_handle_dfs(struct hostapd_if
+ 		 * This can happen with drivers that do not provide mode
+ 		 * information and as such, cannot really use hostapd for DFS.
+ 		 */
+-		wpa_printf(MSG_DEBUG,
+-			   "DFS: No current_mode information - assume no need to perform DFS operations by hostapd");
++		wpa_printf(MSG_INFO,
++			   "Kiran: DFS: No current_mode information - assume no need to perform DFS operations by hostapd");
+ 		return 1;
+ 	}
+ 
+ 	iface->cac_started = 0;
+ 
++	wpa_printf(MSG_INFO, "Kiranmi: DFS iface_ptr=%p freq=%d chan=%d",
++ 		   iface, iface->freq, iface->conf->channel);
++
+ 	do {
+ 		/* Get start (first) channel for current configuration */
+ 		start_chan_idx = dfs_get_start_chan_idx(iface,
+@@ -789,16 +794,16 @@ int hostapd_handle_dfs(struct hostapd_if
+ 
+ 		/* Check if any of configured channels require DFS */
+ 		res = dfs_check_chans_radar(iface, start_chan_idx, n_chans);
+-		wpa_printf(MSG_DEBUG,
+-			   "DFS %d channels required radar detection",
++		wpa_printf(MSG_INFO,
++			   "Kiran: DFS %d channels required radar detection",
+ 			   res);
+ 		if (!res)
+ 			return 1;
+ 
+ 		/* Check if all channels are DFS available */
+ 		res = dfs_check_chans_available(iface, start_chan_idx, n_chans);
+-		wpa_printf(MSG_DEBUG,
+-			   "DFS all channels available, (SKIP CAC): %s",
++		wpa_printf(MSG_INFO,
++			   "Kiran: DFS all channels available, (SKIP CAC): %s",
+ 			   res ? "yes" : "no");
+ 		if (res)
+ 			return 1;
+@@ -806,7 +811,7 @@ int hostapd_handle_dfs(struct hostapd_if
+ 		/* Check if any of configured channels is unavailable */
+ 		res = dfs_check_chans_unavailable(iface, start_chan_idx,
+ 						  n_chans);
+-		wpa_printf(MSG_DEBUG, "DFS %d chans unavailable - choose other channel: %s",
++		wpa_printf(MSG_INFO, "Kiran: DFS %d chans unavailable - choose other channel: %s",
+ 			   res, res ? "yes": "no");
+ 		if (res) {
+ 			int sec = 0;
+@@ -830,7 +835,7 @@ int hostapd_handle_dfs(struct hostapd_if
+ 
+ 	/* Finally start CAC */
+ 	hostapd_set_state(iface, HAPD_IFACE_DFS);
+-	wpa_printf(MSG_DEBUG, "DFS start CAC on %d MHz", iface->freq);
++	wpa_printf(MSG_INFO, "Kiran: DFS start CAC on %d MHz", iface->freq);
+ 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
+ 		"freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds",
+ 		iface->freq,
+@@ -949,7 +954,7 @@ dfs_downgrade_bandwidth(struct hostapd_i
+ 						oper_centr_freq_seg1_idx,
+ 						*skip_radar);
+ 		if (channel) {
+-			wpa_printf(MSG_DEBUG, "DFS: Selected channel: %d",
++			wpa_printf(MSG_INFO, "Kiran: DFS: Selected channel: %d",
+ 				   channel->chan);
+ 			return channel;
+ 		}
+@@ -965,7 +970,7 @@ dfs_downgrade_bandwidth(struct hostapd_i
+ 	}
+ 
+ 	wpa_printf(MSG_INFO,
+-		   "%s: no DFS channels left, waiting for NOP to finish",
++		   "Kiran: %s: no DFS channels left, waiting for NOP to finish",
+ 		   __func__);
+ 	return NULL;
+ }
+@@ -998,7 +1003,7 @@ static int hostapd_dfs_start_channel_swi
+ 		}
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "DFS will switch to a new channel %d",
++	wpa_printf(MSG_INFO, "Kiran: DFS will switch to a new channel %d",
+ 		   channel->chan);
+ 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_NEW_CHANNEL
+ 		"freq=%d chan=%d sec_chan=%d", channel->freq,
+@@ -1077,7 +1082,7 @@ static int hostapd_dfs_testmode_set_beac
+ 	err = ieee802_11_set_beacon(hapd);
+ 	if (err)
+ 		goto fail;
+-	wpa_printf(MSG_DEBUG, "CSA beacon configured for dfs mode, count %d",
++	wpa_printf(MSG_INFO, "Kiran: CSA beacon configured for dfs mode, count %d",
+ 		   hapd->cs_count);
+ 	hapd->csa_in_progress = 1;
+ 	eloop_register_timeout(HOSTAPD_DFS_TEST_MODE_CSA_DUR, 0,
+@@ -1103,7 +1108,7 @@ static int hostapd_dfs_start_channel_swi
+ 	struct hostapd_hw_modes *cmode = iface->current_mode;
+ 	u8 current_vht_oper_chwidth = iface->conf->vht_oper_chwidth;
+ 
+-	wpa_printf(MSG_DEBUG, "%s called (CAC active: %s, CSA active: %s)",
++	wpa_printf(MSG_INFO, "Kiran: %s called (CAC active: %s, CSA active: %s)",
+ 		   __func__, iface->cac_started ? "yes" : "no",
+ 		   hostapd_csa_in_progress(iface) ? "yes" : "no");
+ 
+@@ -1166,7 +1171,7 @@ static int hostapd_dfs_start_channel_swi
+ 		}
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "DFS will switch to a new channel %d",
++	wpa_printf(MSG_INFO, "Kiran: DFS will switch to a new channel %d",
+ 		   channel->chan);
+ 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_NEW_CHANNEL
+ 		"freq=%d chan=%d sec_chan=%d", channel->freq,
+@@ -1208,7 +1213,7 @@ static int hostapd_dfs_start_channel_swi
+ 	}
+ 
+ 	if (!err) {
+-		wpa_printf(MSG_DEBUG, "Reporting DFS event to ubus");
++		wpa_printf(MSG_INFO, "Kiran: Reporting DFS event to ubus");
+ 		hostapd_ubus_handle_channel_switch_event(iface, HOSTAPD_UBUS_DFS_SWITCH,  channel->freq);
+ 	}
+ 
+@@ -1232,7 +1237,7 @@ static int hostapd_dfs_start_channel_swi
+ 	/* Channel configuration will be updated once CSA completes and
+ 	 * ch_switch_notify event is received */
+ 
+-	wpa_printf(MSG_DEBUG, "DFS waiting channel switch event");
++	wpa_printf(MSG_INFO, "Kiran: DFS waiting channel switch event");
+ 	return 0;
+ }
+ 
+@@ -1357,7 +1362,7 @@ int hostapd_dfs_start_cac(struct hostapd
+  */
+ int hostapd_handle_dfs_offload(struct hostapd_iface *iface)
+ {
+-	wpa_printf(MSG_DEBUG, "%s: iface->cac_started: %d",
++	wpa_printf(MSG_INFO, "Kiran: %s: iface->cac_started: %d",
+ 		   __func__, iface->cac_started);
+ 
+ 	/*
+@@ -1366,7 +1371,7 @@ int hostapd_handle_dfs_offload(struct ho
+ 	 * return.
+ 	 */
+ 	if (iface->cac_started) {
+-		wpa_printf(MSG_DEBUG, "%s: iface->cac_started: %d",
++		wpa_printf(MSG_INFO, "Kiran: %s: iface->cac_started: %d",
+ 			   __func__, iface->cac_started);
+ 		iface->cac_started = 0;
+ 		return 1;
+@@ -1374,13 +1379,13 @@ int hostapd_handle_dfs_offload(struct ho
+ 
+ 	if (ieee80211_is_dfs(iface->freq, iface->hw_features,
+ 			     iface->num_hw_features)) {
+-		wpa_printf(MSG_DEBUG, "%s: freq %d MHz requires DFS",
++		wpa_printf(MSG_INFO, "Kiran: %s: freq %d MHz requires DFS",
+ 			   __func__, iface->freq);
+ 		return 0;
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG,
+-		   "%s: freq %d MHz does not require DFS. Continue channel/AP setup",
++	wpa_printf(MSG_INFO,
++		   "Kiran: %s: freq %d MHz does not require DFS. Continue channel/AP setup",
+ 		   __func__, iface->freq);
+ 	return 2;
+ }
+@@ -1431,7 +1436,7 @@ int hostapd_is_dfs_overlap(struct hostap
+ 			res++;
+ 	}
+ 
+-	wpa_printf(MSG_DEBUG, "DFS: (%d, %d): in range: %s",
++	wpa_printf(MSG_INFO, "Kiran: DFS: (%d, %d): in range: %s",
+ 		   center_freq - half_width, center_freq + half_width,
+ 		   res ? "yes" : "no");
+ 
+Index: hostapd-2020-07-02-58b384f4/src/ap/ap_drv_ops.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/src/ap/ap_drv_ops.c
++++ hostapd-2020-07-02-58b384f4/src/ap/ap_drv_ops.c
+@@ -825,7 +825,7 @@ int hostapd_start_dfs_cac(struct hostapd
+ 		return 0;
+ 
+ 	if (!iface->conf->ieee80211h) {
+-		wpa_printf(MSG_ERROR, "Can't start DFS CAC, DFS functionality "
++		wpa_printf(MSG_ERROR, "Kiranm: Can't start DFS CAC, DFS functionality "
+ 			   "is not enabled");
+ 		return -1;
+ 	}
+@@ -837,7 +837,7 @@ int hostapd_start_dfs_cac(struct hostapd
+ 				    center_segment1,
+ 				    cmode->vht_capab,
+ 				    &cmode->he_capab[IEEE80211_MODE_AP])) {
+-		wpa_printf(MSG_ERROR, "Can't set freq params");
++		wpa_printf(MSG_ERROR, "Kiranm: Can't set freq params");
+ 		return -1;
+ 	}
+ 
+Index: hostapd-2020-07-02-58b384f4/hostapd/main.c
+===================================================================
+--- hostapd-2020-07-02-58b384f4.orig/hostapd/main.c
++++ hostapd-2020-07-02-58b384f4/hostapd/main.c
+@@ -888,6 +888,7 @@ int main(int argc, char *argv[])
+ 	 * In such case, the interface will be enabled from eloop context within
+ 	 * hostapd_global_run().
+ 	 */
++	wpa_printf("Kiran: %s", __func__);
+ 	interfaces.terminate_on_error = interfaces.count;
+ 	for (i = 0; i < interfaces.count; i++) {
+ 		if (hostapd_driver_init(interfaces.iface[i]) ||
