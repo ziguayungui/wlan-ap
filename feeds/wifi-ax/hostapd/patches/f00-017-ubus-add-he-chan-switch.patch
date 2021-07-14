@@ -18,7 +18,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  	[CSA_BLOCK_TX] = { "block_tx", BLOBMSG_TYPE_BOOL },
  };
  
-@@ -751,6 +753,158 @@ static int hostapd_get_chan_switch_event
+@@ -751,6 +753,326 @@ static int hostapd_get_chan_switch_event
  
  	return 0;
  }
@@ -33,10 +33,10 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
 +	struct hostapd_channel_data *chan;
 +	int i;
 +
-+	wpa_printf(MSG_INFO, "Kiranmi:%s: freq:%d", __func__, freq);
++//	wpa_printf(MSG_INFO, "Kiranmi:%s: freq:%d", __func__, freq);
 +	mode = iface->current_mode;
 +	if (mode == NULL || freq == 0) {
-+		wpa_printf(MSG_INFO, "Kiranmi:%s: mode is NULL", __func__);
++//		wpa_printf(MSG_INFO, "Kiranmi:%s: mode is NULL", __func__);
 +		return NULL;
 +	}
 +
@@ -44,12 +44,176 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
 +		chan = &iface->current_mode->channels[i];
 +//		wpa_printf(MSG_INFO, "Kiranmi:%s: search freq %d", __func__, chan->freq);
 +		if (chan->freq == freq) {
-+		wpa_printf(MSG_INFO, "Kiranmi:%s:found %p chan %d, flag=%x", __func__, chan, chan->chan, chan->flag);
++//		wpa_printf(MSG_INFO, "Kiranmi:%s:found %p chan %d, flag=%x", __func__, chan, chan->chan, chan->flag);
 +			return chan; /* Channel found */
 +		}
 +	}
 +	return NULL;
 +}
++
++static int new_hostapd_dfs_channel_switch(struct hostapd_iface *iface,
++					struct csa_settings *css, int cf0_id, int cf1_id, int ch_id)
++{
++	struct hostapd_channel_data *channel;
++	int secondary_channel;
++	u8 oper_centr_freq_seg0_idx;
++	u8 oper_centr_freq_seg1_idx;
++	u8 new_vht_oper_chwidth;
++	int skip_radar = 1;
++	struct csa_settings csa_settings;
++	unsigned int i;
++	int err = 1;
++	struct hostapd_hw_modes *cmode = iface->current_mode;
++	u8 current_vht_oper_chwidth = iface->conf->vht_oper_chwidth;
++
++	wpa_printf(MSG_INFO, "Kiran: %s called (CAC active: %s, CSA active: %s)",
++		   __func__, iface->cac_started ? "yes" : "no",
++		   hostapd_csa_in_progress(iface) ? "yes" : "no");
++
++	/* Check if CSA in progress */
++	if (hostapd_csa_in_progress(iface))
++		return 0;
++#if 0
++	/* Check if active CAC */
++	if (iface->cac_started)
++		return hostapd_dfs_start_channel_switch_cac(iface);
++#endif
++	/*
++	 * Allow selection of DFS channel in ETSI to comply with
++	 * uniform spreading.
++	 */
++	if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
++		skip_radar = 0;
++#if 0
++	if (iface->conf->dfs_test_mode)
++		return hostapd_dfs_testmode_set_beacon_csa(iface);
++
++	/* Perform channel switch/CSA */
++	channel = dfs_get_valid_channel(iface, &secondary_channel,
++					&oper_centr_freq_seg0_idx,
++					&oper_centr_freq_seg1_idx,
++					skip_radar);
++
++	if (!channel) {
++		/*
++		 * If there is no channel to switch immediately to, check if
++		 * there is another channel where we can switch even if it
++		 * requires to perform a CAC first.
++		 */
++		skip_radar = 0;
++		channel = dfs_downgrade_bandwidth(iface, &secondary_channel,
++						  &oper_centr_freq_seg0_idx,
++						  &oper_centr_freq_seg1_idx,
++						  &skip_radar);
++		if (!channel) {
++			/*
++			 * Toggle interface state to enter DFS state
++			 * until NOP is finished.
++			 */
++			hostapd_disable_iface(iface);
++			hostapd_enable_iface(iface);
++			return 0;
++		}
++		if (!skip_radar) {
++			iface->freq = channel->freq;
++			iface->conf->channel = channel->chan;
++			iface->conf->secondary_channel = secondary_channel;
++			hostapd_set_oper_centr_freq_seg0_idx(
++				iface->conf, oper_centr_freq_seg0_idx);
++			hostapd_set_oper_centr_freq_seg1_idx(
++				iface->conf, oper_centr_freq_seg1_idx);
++
++			hostapd_disable_iface(iface);
++			hostapd_enable_iface(iface);
++			return 0;
++		}
++	}
++
++	wpa_printf(MSG_INFO, "Kiran: DFS will switch to a new channel %d",
++		   channel->chan);
++	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_NEW_CHANNEL
++		"freq=%d chan=%d sec_chan=%d", channel->freq,
++		channel->chan, secondary_channel);
++
++	new_vht_oper_chwidth = iface->conf->vht_oper_chwidth;
++	iface->conf->vht_oper_chwidth = current_vht_oper_chwidth;
++
++#endif
++	/* Setup CSA request */
++//	os_memset(&csa_settings, 0, sizeof(csa_settings));
++	csa_settings.cs_count = 5;
++	csa_settings.block_tx = 1;
++#if 0 //remove
++	iface->freq = css->freq_params.freq;
++	iface->conf->channel = ch_id;
++	iface->conf->secondary_channel = css->freq_params.sec_channel_offset;
++	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, cf0_id);
++	hostapd_set_oper_centr_freq_seg1_idx(iface->conf, cf1_id);
++	hostapd_set_oper_chwidth(iface->conf, bw);
++	iface->conf->ieee80211n = css->freq_params.ht_enabled;
++	iface->conf->ieee80211ac = css->freq_params.vht_enabled;
++	iface->conf->ieee80211ax = css->freq_params.he_enabled;
++#endif
++	wpa_printf(MSG_ERROR, "%s Kiran set freq params", __func__);
++	err = hostapd_set_freq_params(&css->freq_params,
++				      iface->conf->hw_mode,
++				      css->freq_params.freq,
++				      ch_id,
++				      iface->conf->enable_edmg,
++				      iface->conf->edmg_channel,
++				      iface->conf->ieee80211n,
++				      iface->conf->ieee80211ac,
++				      iface->conf->ieee80211ax,
++				      css->freq_params.sec_channel_offset,
++				      css->freq_params.bandwidth,
++				      cf0_id, cf1_id,
++				      cmode->vht_capab,
++				      &cmode->he_capab[IEEE80211_MODE_AP]);
++
++	if (err) {
++		wpa_printf(MSG_ERROR, "%s Kiran DFS failed to calculate CSA freq params", __func__);
++		hostapd_disable_iface(iface);
++		return err;
++	}
++
++	for (i = 0; i < iface->num_bss; i++) {
++		wpa_printf(MSG_INFO, "Kiran:%s: call hostapd_switch_channel", __func__);
++		err = hostapd_switch_channel(iface->bss[i], &csa_settings);
++		if (err)
++			break;
++	}
++
++	if (!err) {
++		wpa_printf(MSG_INFO, "Kiran: Reporting DFS event to ubus");
++		hostapd_ubus_handle_channel_switch_event(iface, HOSTAPD_UBUS_DFS_SWITCH,  channel->freq);
++	}
++
++	if (err) {
++		wpa_printf(MSG_WARNING, "%s DFS failed to schedule CSA (%d) - trying fallback", __func__,
++			   err);
++		iface->freq = css->freq_params.freq;
++		iface->conf->channel = ch_id;
++		iface->conf->secondary_channel = css->freq_params.sec_channel_offset;
++		iface->conf->vht_oper_chwidth = css->freq_params.bandwidth;
++		hostapd_set_oper_centr_freq_seg0_idx(iface->conf,
++						     cf0_id);
++		hostapd_set_oper_centr_freq_seg1_idx(iface->conf,
++						     cf1_id);
++
++		hostapd_disable_iface(iface);
++		hostapd_enable_iface(iface);
++		return 0;
++	}
++
++	/* Channel configuration will be updated once CSA completes and
++	 * ch_switch_notify event is received */
++
++	wpa_printf(MSG_INFO, "Kiran: DFS waiting channel switch event");
++	return 0;
++}
++
++
++
 +
 +int hostapd_switch_chan_dfs(struct hostapd_iface *iface,
 +			     struct csa_settings *css)
@@ -61,6 +225,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
 +	if (iface == NULL)
 +		return;
 +
++	wpa_printf(MSG_INFO, "%s", __func__);
 +	if (css->freq_params.freq > 0) {
 +		ch = freq_to_chan(iface, css->freq_params.freq);
 +		ch_id = ch->chan;
@@ -117,9 +282,11 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
 +		break;
 +	}
 +
++	if (new_hostapd_dfs_channel_switch(iface, css, cf0_id, cf1_id, ch_id) < 0) {
++		wpa_printf(MSG_INFO, "%s New dfs channel switch failed", __func__);
++	}
 +
-+
-+
++#if 0
 +	iface->freq = css->freq_params.freq;
 +	iface->conf->channel = ch_id;
 +	iface->conf->secondary_channel = css->freq_params.sec_channel_offset;
@@ -144,6 +311,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
 +		   iface->conf->ieee80211ac, iface->conf->ieee80211ax);
 +
 +	hostapd_enable_iface(iface);
++#endif
 +
 +#endif	
 +
@@ -177,7 +345,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  
  static int
  hostapd_switch_chan(struct ubus_context *ctx, struct ubus_object *obj,
-@@ -759,7 +913,10 @@ hostapd_switch_chan(struct ubus_context
+@@ -759,7 +1081,10 @@ hostapd_switch_chan(struct ubus_context
  {
  	struct blob_attr *tb[__CSA_MAX];
  	struct hostapd_data *hapd = get_hapd_from_object(obj);
@@ -188,7 +356,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  	int i;
  
  	blobmsg_parse(csa_policy, __CSA_MAX, tb, blob_data(msg), blob_len(msg));
-@@ -767,6 +924,15 @@ hostapd_switch_chan(struct ubus_context
+@@ -767,6 +1092,15 @@ hostapd_switch_chan(struct ubus_context
  	if (!tb[CSA_FREQ])
  		return UBUS_STATUS_INVALID_ARGUMENT;
  
@@ -204,7 +372,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  	memset(&css, 0, sizeof(css));
  	css.freq_params.freq = blobmsg_get_u32(tb[CSA_FREQ]);
  
-@@ -783,8 +949,22 @@ hostapd_switch_chan(struct ubus_context
+@@ -783,8 +1117,22 @@ hostapd_switch_chan(struct ubus_context
  	SET_CSA_SETTING(CSA_SEC_CHANNEL_OFFSET, freq_params.sec_channel_offset, u32);
  	SET_CSA_SETTING(CSA_HT, freq_params.ht_enabled, bool);
  	SET_CSA_SETTING(CSA_VHT, freq_params.vht_enabled, bool);
@@ -227,7 +395,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/ubus.c
  	for (i = 0; i < hapd->iface->num_bss; i++) {
  		if (hostapd_switch_channel(hapd->iface->bss[i], &css) != 0)
  			return UBUS_STATUS_NOT_SUPPORTED;
-@@ -1445,16 +1625,23 @@ void hostapd_ubus_free_bss(struct hostap
+@@ -1445,16 +1793,23 @@ void hostapd_ubus_free_bss(struct hostap
  	if (!ctx)
  		return;
  
@@ -499,7 +667,22 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
  			if (hostapd_setup_interface(hapd_iface)) {
  				hostapd_deinit_driver(
  					hapd_iface->bss[0]->driver,
-@@ -3665,6 +3711,7 @@ static int hostapd_fill_csa_settings(str
+@@ -3401,9 +3447,12 @@ int hostapd_csa_in_progress(struct hosta
+ {
+ 	unsigned int i;
+ 
+-	for (i = 0; i < iface->num_bss; i++)
+-		if (iface->bss[i]->csa_in_progress)
++	for (i = 0; i < iface->num_bss; i++) {
++		wpa_printf(MSG_INFO, "%s: i:%d num_bss:%d", __func__, i, iface->num_bss);
++		if (iface->bss[i]->csa_in_progress) {
+ 			return 1;
++		}
++	}
+ 	return 0;
+ }
+ 
+@@ -3665,6 +3714,7 @@ static int hostapd_fill_csa_settings(str
  	settings->counter_offset_beacon[1] = hapd->cs_c_off_ecsa_beacon;
  	settings->counter_offset_presp[1] = hapd->cs_c_off_ecsa_proberesp;
  
@@ -507,7 +690,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/hostapd.c
  	return 0;
  }
  
-@@ -3774,6 +3821,11 @@ hostapd_switch_channel_fallback(struct h
+@@ -3774,6 +3824,11 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->ieee80211n = freq_params->ht_enabled;
  	iface->conf->ieee80211ac = freq_params->vht_enabled;
  	iface->conf->ieee80211ax = freq_params->he_enabled;
@@ -556,7 +739,17 @@ Index: hostapd-2020-07-02-58b384f4/src/drivers/driver_nl80211.c
  		   settings->cs_count, settings->block_tx,
  		   settings->freq_params.freq, settings->freq_params.bandwidth,
  		   settings->freq_params.center_freq1,
-@@ -9893,7 +9893,7 @@ static int nl80211_switch_channel(void *
+@@ -9867,6 +9867,9 @@ static int nl80211_switch_channel(void *
+ 	     nla_put_flag(msg, NL80211_ATTR_CH_SWITCH_BLOCK_TX)))
+ 		goto error;
+ 
++	if (nla_put_flag(msg, NL80211_ATTR_HANDLE_DFS))
++		goto fail;
++
+ 	/* beacon_after params */
+ 	ret = set_beacon_data(msg, &settings->beacon_after);
+ 	if (ret)
+@@ -9893,7 +9896,7 @@ static int nl80211_switch_channel(void *
  	nla_nest_end(msg, beacon_csa);
  	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
  	if (ret) {
@@ -703,7 +896,7 @@ Index: hostapd-2020-07-02-58b384f4/src/ap/dfs.c
  	mode = iface->current_mode;
  	for (i = 0; i < mode->num_channels; i++) {
  		chan = &mode->channels[i];
-+		wpa_printf(MSG_INFO,"Kiran: channel_no=%d chan->chan=%d", channel_no, chan->chan);
++//		wpa_printf(MSG_INFO,"Kiran: channel_no=%d chan->chan=%d", channel_no, chan->chan);
  		if (chan->chan == channel_no) {
  			res = i;
  			break;
