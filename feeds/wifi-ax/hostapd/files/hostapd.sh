@@ -58,8 +58,6 @@ hostapd_append_wpa_key_mgmt() {
 		;;
 		eap192)
 			append wpa_key_mgmt "WPA-EAP-SUITE-B-192"
-			[ "${ieee80211w:-0}" -gt 0 ] && append wpa_key_mgmt "WPA-EAP-SHA256"
-			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-EAP"
 		;;
 		eap-eap192)
 			append wpa_key_mgmt "WPA-EAP-SUITE-B-192"
@@ -851,6 +849,7 @@ hostapd_set_bss_options() {
 						eap192)
 							append bss_conf "group_mgmt_cipher=BIP-GMAC-256" "$N"
 							append bss_conf "group_cipher=GCMP-256" "$N"
+							append bss_conf "rsn_pairwise=GCMP-256" "$N"
 						;;
 						*)
 							append bss_conf "group_mgmt_cipher=${ieee80211w_mgmt_cipher:-AES-128-CMAC}" "$N"
