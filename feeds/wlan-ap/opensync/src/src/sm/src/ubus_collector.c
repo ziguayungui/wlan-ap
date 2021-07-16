@@ -137,6 +137,10 @@ static radio_type_t frequency_to_band(int freq)
 		return RADIO_TYPE_NONE;
 }
 
+#define LOG_CLIENT_EVENT( mac, session, timestamp, rc ) \
+	LOG(INFO, "Client event: %s, mac %s, session id %llu, timestamp %llu rc %d", \
+		__FUNCTION__, mac, session, timestamp, rc)
+
 static int client_first_data_event_cb(struct blob_attr *msg,
 				      dpp_event_record_session_t *dpp_session,
 				      uint64_t event_session_id)
@@ -176,7 +180,7 @@ static int client_first_data_event_cb(struct blob_attr *msg,
 
 	if (tb_client_first_data_event[CLIENT_FIRST_DATA_RX_TIMESTAMP])
 		dpp_session->first_data_event->fdata_rx_up_ts_in_us = blobmsg_get_u64(tb_client_first_data_event[CLIENT_FIRST_DATA_RX_TIMESTAMP]);
-
+	LOG_CLIENT_EVENT( mac_address, event_session_id, dpp_session->first_data_event->timestamp, 0);
 	return 0;
 }
 
@@ -187,7 +191,7 @@ static int client_disconnect_event_cb(struct blob_attr *msg,
 	int error = 0;
 	struct blob_attr
 		*tb_client_disconnect_event[__CLIENT_DISCONNECT_MAX] = {};
-	char *mac_address, *ssid = NULL;
+	char *mac_address = NULL, *ssid = NULL;
 
 	if (NULL == dpp_session)
 		return -1;
@@ -228,6 +232,7 @@ static int client_disconnect_event_cb(struct blob_attr *msg,
 	if (tb_client_disconnect_event[CLIENT_DISCONNECT_INTERNAL_RC])
 		dpp_session->disconnect_event->internal_rc = blobmsg_get_u32(tb_client_disconnect_event[CLIENT_DISCONNECT_INTERNAL_RC]);
 
+        LOG_CLIENT_EVENT( mac_address, event_session_id, dpp_session->disconnect_event->timestamp, dpp_session->disconnect_event->internal_rc);
 	return 0;
 }
 
@@ -237,7 +242,7 @@ static int client_auth_event_cb(struct blob_attr *msg,
 {
 	int error = 0;
 	struct blob_attr *tb_client_auth_event[__CLIENT_ASSOC_MAX] = {};
-	char *mac_address, *ssid = NULL;
+	char *mac_address = NULL, *ssid = NULL;
 
 	if (NULL == dpp_session)
 		return -1;
@@ -274,6 +279,7 @@ static int client_auth_event_cb(struct blob_attr *msg,
 	if (tb_client_auth_event[CLIENT_AUTH_AUTH_STATUS])
 			dpp_session->auth_event->auth_status = blobmsg_get_u32(tb_client_auth_event[CLIENT_AUTH_AUTH_STATUS]);
 
+        LOG_CLIENT_EVENT( mac_address, event_session_id, dpp_session->auth_event->timestamp, dpp_session->auth_event->auth_status);
 	return 0;
 }
 
@@ -283,7 +289,7 @@ static int client_assoc_event_cb(struct blob_attr *msg,
 {
 	int error = 0;
 	struct blob_attr *tb_client_assoc_event[__CLIENT_ASSOC_MAX] = {};
-	char *mac_address, *ssid = NULL;
+	char *mac_address = NULL, *ssid = NULL;
 
 	if (NULL == dpp_session)
 		return -1;
@@ -335,6 +341,7 @@ static int client_assoc_event_cb(struct blob_attr *msg,
 	if (tb_client_assoc_event[CLIENT_ASSOC_USING11V])
 		dpp_session->assoc_event->using11v = blobmsg_get_bool(tb_client_assoc_event[CLIENT_ASSOC_USING11V]);
 
+        LOG_CLIENT_EVENT( mac_address, event_session_id, dpp_session->assoc_event->timestamp, dpp_session->assoc_event->internal_sc);
 	return 0;
 }
 
@@ -344,7 +351,7 @@ static int client_ip_event_cb(struct blob_attr *msg,
 {
 	int error = 0;
 	struct blob_attr *tb_client_ip_event[__CLIENT_IP_MAX] = {};
-	char *mac_address, *ip_address = NULL;
+	char *mac_address = NULL, *ip_address = NULL;
 
 	if (NULL == dpp_session)
 		return -1;
@@ -375,6 +382,7 @@ static int client_ip_event_cb(struct blob_attr *msg,
 	if (tb_client_ip_event[CLIENT_IP_TIMESTAMP])
 		dpp_session->ip_event->timestamp = blobmsg_get_u64(tb_client_ip_event[CLIENT_IP_TIMESTAMP]);
 
+        LOG_CLIENT_EVENT( mac_address, event_session_id, dpp_session->ip_event->timestamp, 0);
 	return 0;
 }
 
@@ -468,7 +476,7 @@ static void ubus_collector_session_cb(struct ubus_request *req, int type,
 
 		/* Check if the session is already processed */
 		if (ubus_collector_is_session_processed(session_id) == true) {
-			LOG(DEBUG, "ubus_collector: Session already processed");
+			LOG(INFO, "ubus_collector: Session %llu already processed", session_id);
 			continue;
 		}
 
@@ -761,6 +769,7 @@ static void ubus_collector_hostapd_clear(uint64_t session_id, char *object_path)
 
 	blob_buf_init(&b, 0);
 	blobmsg_add_u64(&b, "session_id", session_id);
+	LOG(INFO, "%s : Session %llu sending clear", __FUNCTION__, session_id);
 
 	if (UBUS_STATUS_OK != ubus_invoke(ubus, ubus_object_id, hostapd_method, b.head, NULL, NULL, 1000)) {
 		LOG(ERR, "ubus call to clear session failed");
