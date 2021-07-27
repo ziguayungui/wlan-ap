@@ -1,0 +1,12 @@
+diff -Naur a/ath10k-5.7/wmi.c b/ath10k-5.7/wmi.c
+--- a/ath10k-5.7/wmi.c	2021-07-21 15:46:57.932019221 -0400
++++ b/ath10k-5.7/wmi.c	2021-07-30 11:05:36.941241604 -0400
+@@ -2853,6 +2853,8 @@
+ 	survey->time_busy = (params->rx_clear_count / params->mac_clk_mhz) / 1000;
+ 	survey->filled |= SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME |
+ 			  SURVEY_INFO_TIME_BUSY;
++	printk("DBGL: ath10k_wmi_event_chan_info_unpaired. freq:%d, time:%d, time_busy:%d\n",
++		params->freq, survey->time, survey->time_busy);
+ }
+ 
+ /*

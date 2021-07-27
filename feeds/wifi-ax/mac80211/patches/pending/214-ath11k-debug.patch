@@ -1,0 +1,12 @@
+diff -Naur a/drivers/net/wireless/ath/ath11k/wmi.c b/drivers/net/wireless/ath/ath11k/wmi.c
+--- a/drivers/net/wireless/ath/ath11k/wmi.c	2021-07-22 16:00:36.294818833 -0400
++++ b/drivers/net/wireless/ath/ath11k/wmi.c	2021-07-30 10:27:22.196855791 -0400
+@@ -7277,6 +7277,8 @@
+ 				 SURVEY_INFO_TIME_BUSY;
+ 		survey->time = div_u64(ch_info_ev.cycle_count, cc_freq_hz);
+ 		survey->time_busy = div_u64(ch_info_ev.rx_clear_count, cc_freq_hz);
++		printk("DBGL: ath11k_chan_info_event. freq: %d total_time %llu busy_time  %llu\n",
++			ch_info_ev.freq, survey->time, survey->time_busy);
+ 	}
+ exit:
+ 	spin_unlock_bh(&ar->data_lock);
