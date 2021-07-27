@@ -1,0 +1,28 @@
+diff -Naur a/drivers/net/wireless/ath/ath11k/wmi.c b/drivers/net/wireless/ath/ath11k/wmi.c
+--- a/drivers/net/wireless/ath/ath11k/wmi.c	2021-07-22 16:00:36.294818833 -0400
++++ b/drivers/net/wireless/ath/ath11k/wmi.c	2021-07-27 15:48:52.792855803 -0400
+@@ -7271,12 +7271,18 @@
+ 
+ 	if (ch_info_ev.cmd_flags == WMI_CHAN_INFO_START_RESP) {
+ 		survey = &ar->survey[idx];
+-		memset(survey, 0, sizeof(*survey));
+-		survey->noise = ch_info_ev.noise_floor;
+-		survey->filled = SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME |
+-				 SURVEY_INFO_TIME_BUSY;
+-		survey->time = div_u64(ch_info_ev.cycle_count, cc_freq_hz);
+-		survey->time_busy = div_u64(ch_info_ev.rx_clear_count, cc_freq_hz);
++		survey->noise 		= ch_info_ev.noise_floor;
++		survey->time 		+= div_u64(ch_info_ev.cycle_count, cc_freq_hz);
++		survey->time_busy 	+= div_u64(ch_info_ev.rx_clear_count, cc_freq_hz);
++		survey->time_rx     	+= div_u64(ch_info_ev.rx_frame_count, cc_freq_hz);
++		survey->time_bss_rx 	+= div_u64(ch_info_ev.my_bss_rx_cycle_count, cc_freq_hz);
++		survey->time_tx     	+= div_u64(ch_info_ev.tx_frame_cnt, cc_freq_hz);
++		survey->filled     	|= (SURVEY_INFO_NOISE_DBM |
++				            SURVEY_INFO_TIME |
++				            SURVEY_INFO_TIME_BUSY |
++				            SURVEY_INFO_TIME_RX |
++				            SURVEY_INFO_TIME_TX |
++				            SURVEY_INFO_TIME_BSS_RX);
+ 	}
+ exit:
+ 	spin_unlock_bh(&ar->data_lock);

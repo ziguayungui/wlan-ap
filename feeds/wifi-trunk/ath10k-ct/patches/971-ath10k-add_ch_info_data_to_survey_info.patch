@@ -1,0 +1,60 @@
+diff -Naur a/ath10k-5.7/wmi.c b/ath10k-5.7/wmi.c
+--- a/ath10k-5.7/wmi.c	2021-07-21 15:46:57.932019221 -0400
++++ b/ath10k-5.7/wmi.c	2021-07-27 14:26:48.130254191 -0400
+@@ -2828,6 +2828,7 @@
+ {
+ 	struct survey_info *survey;
+ 	int idx;
++	u32 cc_freq_hz;
+ 
+ 	if (params->cmd_flags & WMI_CHAN_INFO_FLAG_COMPLETE) {
+ 		ath10k_dbg(ar, ATH10K_DBG_WMI, "chan info report completed\n");
+@@ -2846,13 +2847,19 @@
+ 	if (!params->mac_clk_mhz)
+ 		return;
+ 
+-	memset(survey, 0, sizeof(*survey));
+-
++	cc_freq_hz = (params->mac_clk_mhz * 1000);
+ 	survey->noise = params->noise_floor;
+-	survey->time = (params->cycle_count / params->mac_clk_mhz) / 1000;
+-	survey->time_busy = (params->rx_clear_count / params->mac_clk_mhz) / 1000;
+-	survey->filled |= SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME |
+-			  SURVEY_INFO_TIME_BUSY;
++	survey->time += div_u64(params->cycle_count, cc_freq_hz);
++	survey->time_busy += div_u64(params->rx_clear_count, cc_freq_hz);
++	survey->time_rx += div_u64(params->rx_frame_count, cc_freq_hz);
++	survey->time_bss_rx += div_u64(params->my_bss_rx_cycle_count, cc_freq_hz);
++	survey->time_tx += div_u64(params->tx_frame_cnt, cc_freq_hz);
++	survey->filled |= (SURVEY_INFO_NOISE_DBM |
++			   SURVEY_INFO_TIME |
++			   SURVEY_INFO_TIME_BUSY |
++			   SURVEY_INFO_TIME_RX |
++			   SURVEY_INFO_TIME_TX |
++			   SURVEY_INFO_TIME_BSS_RX);
+ }
+ 
+ /*
+@@ -2915,6 +2922,9 @@
+ 	ch_info_param.noise_floor = __le32_to_cpu(arg.noise_floor);
+ 	ch_info_param.rx_clear_count = __le32_to_cpu(arg.rx_clear_count);
+ 	ch_info_param.cycle_count = __le32_to_cpu(arg.cycle_count);
++	ch_info_param.rx_frame_count = __le32_to_cpu(arg.rx_frame_count);
++	ch_info_param.my_bss_rx_cycle_count = __le32_to_cpu(arg.my_bss_rx_cycle_count);
++	ch_info_param.tx_frame_cnt = __le32_to_cpu(arg.tx_frame_cnt);
+ 	ch_info_param.mac_clk_mhz = __le32_to_cpu(arg.mac_clk_mhz);
+ 
+ 	ath10k_dbg(ar, ATH10K_DBG_WMI,
+diff -Naur a/ath10k-5.7/wmi-tlv.h b/ath10k-5.7/wmi-tlv.h
+--- a/ath10k-5.7/wmi-tlv.h	2021-07-27 14:25:44.186133749 -0400
++++ b/ath10k-5.7/wmi-tlv.h	2021-07-27 14:26:45.554239378 -0400
+@@ -1638,6 +1638,9 @@
+ 	u32 noise_floor;
+ 	u32 rx_clear_count;
+ 	u32 cycle_count;
++	u32 rx_frame_count;
++	u32 my_bss_rx_cycle_count;
++	u32 tx_frame_cnt;
+ 	u32 mac_clk_mhz;
+ };
+ 
