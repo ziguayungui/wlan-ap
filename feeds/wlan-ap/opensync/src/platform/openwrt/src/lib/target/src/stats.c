@@ -266,7 +266,7 @@ bool target_stats_survey_get(radio_entry_t *radio_cfg, uint32_t *chan_list,
 	return ret;
 }
 
-#define PERCENT(v1, v2) (v2 > 0 ? ((v1 > v2) ? 100 : (v1*100/v2)) : 0)
+#define PERCENT(v1, v2) (v2 > 0 ? ((v1 > v2) ? 10000 : (v1*10000/v2)) : 0)
 #define DELTA(n, p) ((n) < (p) ? (n) : (n) - (p))
 
 bool target_stats_survey_convert(radio_entry_t *radio_cfg, radio_scan_type_t scan_type,
@@ -299,6 +299,16 @@ bool target_stats_survey_convert(radio_entry_t *radio_cfg, radio_scan_type_t sca
 	survey_record->chan_busy     = PERCENT(delta.chan_busy, delta.duration_ms);
 	survey_record->chan_noise    = data_new->chan_noise;
 	survey_record->duration_ms   = delta.duration_ms;
+
+	LOGD("Report: chan.%d chan_tx.%d chan_self.%d chan_rx.%d chan_busy_ext.%d chan_busy.%d chan_noise.%d duration_ms.%d",
+		survey_record->info.chan,
+		survey_record->chan_tx,
+		survey_record->chan_self,
+		survey_record->chan_rx,
+		survey_record->chan_busy_ext,
+		survey_record->chan_busy,
+		survey_record->chan_noise,
+		survey_record->duration_ms);
 
 	return true;
 }
