@@ -23,18 +23,18 @@ index 1402a74f3e..bca3ae8daa 100755
  	;;
 -edgecore,eap101 |\
 +edgecore,eap101)
-+	ucidef_set_led_wlan "wifi5g" "WIFI5G" "eap101:green:wifi5g" "phy0tx"
-+	ucidef_set_led_wlan "wifi2g" "WIFI2G" "eap101:green:wifi2g" "phy1tx"
++	ucidef_set_led_wlan "wifi5g" "WIFI5G" "eap101:green:wifi5g" "phy0tpt"
++	ucidef_set_led_wlan "wifi2g" "WIFI2G" "eap101:green:wifi2g" "phy1tpt"
 +	;;
  edgecore,eap102)
 -        ucidef_set_led_wlan "wlan5g" "WLAN5G" "green:wifi5" "phy0tx"
 -        ucidef_set_led_wlan "wlan2g" "WLAN2G" "green:wifi2" "phy1tx"
-+	ucidef_set_led_wlan "wifi5g" "WIFI5G" "eap102:green:wifi5g" "phy0tx"
-+	ucidef_set_led_wlan "wifi2g" "WIFI2G" "eap102:green:wifi2g" "phy1tx"
++	ucidef_set_led_wlan "wifi5g" "WIFI5G" "eap102:green:wifi5g" "phy0tpt"
++	ucidef_set_led_wlan "wifi2g" "WIFI2G" "eap102:green:wifi2g" "phy1tpt"
 +	;;
 +cig,wf188n)
-+	ucidef_set_led_wlan "wifi5g" "WIFI5G" "wf188:green:wifi5g" "phy0tx"
-+	ucidef_set_led_wlan "wifi2g" "WIFI2G" "wf188:green:wifi2g" "phy1tx"
++	ucidef_set_led_wlan "wifi5g" "WIFI5G" "wf188:green:wifi5g" "phy0tpt"
++	ucidef_set_led_wlan "wifi2g" "WIFI2G" "wf188:green:wifi2g" "phy1tpt"
  	;;
  esac
  
