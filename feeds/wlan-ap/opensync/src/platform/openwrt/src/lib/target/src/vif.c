@@ -405,7 +405,7 @@ static int vif_config_security_set(struct blob_buf *b,
 		if (strcmp(vif_crypto[i].mode, mode))
 			continue;
 		blobmsg_add_string(b, "encryption", vif_crypto[i].uci);
-
+		blobmsg_add_bool(b, "auth_cache", 1);
 		if (!strcmp(mode, OVSDB_SECURITY_MODE_WPA3)) {
 			blobmsg_add_string(b, "ieee80211w", "2");
 		} else {
@@ -490,7 +490,6 @@ static int vif_config_security_set(struct blob_buf *b,
 				strcat(key_holder_str, key_str);
 				blobmsg_add_string(b, "r1kh", key_holder_str);
 			}
-			blobmsg_add_bool(b, "auth_cache", 1);
 		} else {
 			security_key = SCHEMA_KEY_VAL(vconf->security, SCHEMA_CONSTS_SECURITY_KEY);
 			if (security_key == NULL) {
