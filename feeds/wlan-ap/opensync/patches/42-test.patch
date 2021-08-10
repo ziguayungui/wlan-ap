@@ -1,0 +1,14 @@
+--- a/src/sm/src/sm_survey_report.c
++++ b/src/sm/src/sm_survey_report.c
+@@ -1579,8 +1579,10 @@ bool sm_survey_stats_init (
+     }
+ 
+     /* Check if vif interface exists */
++    LOGW("OwO phy_name is: %s, if_name is: %s", radio_cfg_ctx->phy_name, radio_cfg_ctx->if_name);
+     if (!strlen(radio_cfg_ctx->if_name)) {
+-        LOGE("Initializing %s %s survey report "
++        system("echo \"--------------------------------------------\" >> /tmp/log.txt; date >>/tmp/log.txt; ifconfig >> /tmp/log.txt; iwinfo >> /tmp/log.txt;");
++        LOGW("Initializing %s %s survey report "
+              "(Interface not configured)",
+              radio_get_name_from_cfg(radio_cfg_ctx),
+              radio_get_scan_name_from_type(scan_type));

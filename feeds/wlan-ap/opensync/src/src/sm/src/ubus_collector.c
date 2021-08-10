@@ -545,9 +545,10 @@ static void get_sessions(void * arg)
 {
 	bss_obj_t *bss_record = NULL;
 	ds_dlist_iter_t record_iter;
+	LOG(WARN, "OwO called get_sessions");
 
 	if (ds_dlist_is_empty(&bss_list)) {
-		LOG(NOTICE, "No BSSs to get sessions for");
+		LOG(WARN, "OwO No BSSs to get sessions for");
 		evsched_task_reschedule();
 		return;
 	}
@@ -568,7 +569,7 @@ static void ubus_collector_bss_cb(struct ubus_request *req, int type,
 	struct blob_attr *tb_bss_tbl = NULL;
 	bss_obj_t *bss_record = NULL;
 	ds_dlist_iter_t record_iter;
-
+	LOG(WARN, "OwO called data callback");
 	if (!msg)
 		return;
 
@@ -610,7 +611,10 @@ static void ubus_collector_bss_cb(struct ubus_request *req, int type,
 				}
 			}
 		}
+
+		LOG(WARN, "OwO tried adding items to list");
 		if (!obj_exists) {
+			LOG(WARN, "OwO OOOOOOO added items to list");
 			bss_record = calloc(1, sizeof(bss_obj_t));
 			strncpy(bss_record->obj_name, obj_name, UBUS_OBJ_LEN);
 			ds_dlist_insert_tail(&bss_list, bss_record);
@@ -728,6 +732,7 @@ static void ubus_collector_hostapd_bss_invoke(void *arg)
 	req->data_cb = ubus_collector_bss_cb;
 	req->complete_cb = ubus_collector_complete_bss_cb;
 
+	LOG(WARN, "OwO started callback");
 	ubus_complete_request_async(ubus, req);
 
 	evsched_task_reschedule();
@@ -766,6 +771,8 @@ static void ubus_garbage_collector(void *arg)
 	}
 }
 
+static bool test = true;
+
 int ubus_collector_init(void)
 {
 	int sched_status = 0;
@@ -777,9 +784,14 @@ int ubus_collector_init(void)
 	}
 
 	/* Initialize the global events, session deletion and bss object lists */
-	ds_dlist_init(&g_event_report.client_event_list, dpp_event_record_t, node);
-	ds_dlist_init(&g_event_report.channel_switch_list, dpp_event_channel_switch_t, node);
-	ds_dlist_init(&bss_list, bss_obj_t, node);
+	if (test) {
+		LOG(WARN, "OwO cleared list");
+		ds_dlist_init(&g_event_report.client_event_list, dpp_event_record_t, node);
+		ds_dlist_init(&g_event_report.channel_switch_list, dpp_event_channel_switch_t, node);
+		ds_dlist_init(&bss_list, bss_obj_t, node);
+	}
+
+	test = false;
 
 	/* Schedule an event: invoke hostapd ubus get bss list method  */
 	sched_status = evsched_task(&ubus_collector_hostapd_bss_invoke, NULL,
