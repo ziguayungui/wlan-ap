@@ -1,23 +1,31 @@
-From c6ab9a9f4858c2f6b2a77ab7559bd422ed2eaee8 Mon Sep 17 00:00:00 2001
+From e096ea6f6d4d115bd30e660c749cb3fe2c7da718 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Tue, 16 Mar 2021 10:46:51 +0100
-Subject: [PATCH 01/54] realtek: update to latest owrt HEAD
+Subject: [PATCH] realtek: update to latest owrt HEAD
 
 Signed-off-by: John Crispin <john@phrozen.org>
 ---
- package/boot/uboot-envtools/files/realtek     |    7 +
+ package/boot/uboot-envtools/files/realtek     |    5 +
  .../realtek/base-files/etc/board.d/01_leds    |    1 -
  .../realtek/base-files/etc/board.d/02_network |   12 +-
- target/linux/realtek/config-5.4               |   33 +-
- .../realtek/dts/rtl8380_zyxel_gs1900-10hp.dts |   20 +-
- .../dts/rtl8392_edgecore_ecs4100-12ph.dts     |  297 ++
+ .../lib/preinit/05_set_preinit_iface_realtek  |   13 -
+ .../lib/preinit/98_remove_preinit_realtek     |    6 -
+ target/linux/realtek/config-5.4               |   30 +-
+ .../realtek/dts/rtl8380_netgear_gigabit.dtsi  |   11 +-
+ .../realtek/dts/rtl8380_zyxel_gs1900-10hp.dts |    4 +-
+ .../realtek/dts/rtl8380_zyxel_gs1900-8.dts    |   12 -
+ .../realtek/dts/rtl8380_zyxel_gs1900.dtsi     |    1 +
+ .../dts/rtl8382_allnet_all-sg8208m.dts        |    1 +
+ .../dts/rtl8382_d-link_dgs-1210-10p.dts       |    1 +
+ .../realtek/dts/rtl8382_d-link_dgs-1210.dtsi  |    1 +
+ .../dts/rtl8392_edgecore_ecs4100-12ph.dts     |  301 ++
  target/linux/realtek/dts/rtl839x.dtsi         |  197 ++
  .../include/asm/mach-rtl838x/mach-rtl83xx.h   |   23 +-
  .../files-5.4/drivers/net/dsa/rtl83xx/Kconfig |    2 +-
  .../drivers/net/dsa/rtl83xx/Makefile          |    2 +-
- .../drivers/net/dsa/rtl83xx/common.c          | 1024 +++++-
+ .../drivers/net/dsa/rtl83xx/common.c          | 1013 +++++-
  .../drivers/net/dsa/rtl83xx/debugfs.c         |  391 ++-
- .../files-5.4/drivers/net/dsa/rtl83xx/dsa.c   |  945 +++--
+ .../files-5.4/drivers/net/dsa/rtl83xx/dsa.c   |  905 +++--
  .../drivers/net/dsa/rtl83xx/rtl838x.c         | 1722 ++++++++-
  .../drivers/net/dsa/rtl83xx/rtl838x.h         |  472 ---
  .../drivers/net/dsa/rtl83xx/rtl839x.c         | 1591 ++++++++-
@@ -25,12 +33,13 @@ Signed-off-by: John Crispin <john@phrozen.org>
  .../drivers/net/dsa/rtl83xx/rtl930x.c         | 1937 +++++++++-
  .../drivers/net/dsa/rtl83xx/rtl931x.c         |   90 +-
  .../files-5.4/drivers/net/dsa/rtl83xx/tc.c    |  405 +++
- .../drivers/net/ethernet/rtl838x_eth.c        |  209 +-
+ .../drivers/net/ethernet/rtl838x_eth.c        |  181 +-
  .../drivers/net/ethernet/rtl838x_eth.h        |    2 +
  .../files-5.4/drivers/net/phy/rtl83xx-phy.c   |  560 +--
  .../realtek/files-5.4/include/linux/rtl838x.h |  994 ++++++
  .../realtek/files-5.4/net/dsa/tag_rtl83xx.c   |  119 +
- target/linux/realtek/image/Makefile           |    9 +
+ target/linux/realtek/image/Makefile           |   44 +-
+ .../300-mips-add-rtl838x-platform.patch       |    2 +-
  .../301-gpio-add-rtl838x-driver.patch         |    2 +-
  ...0-gpio-Add-Realtek-Otto-GPIO-support.patch |  405 +++
  .../realtek/patches-5.4/706-sysled.patch      |  288 ++
@@ -42,7 +51,10 @@ Signed-off-by: John Crispin <john@phrozen.org>
  .../linux/realtek/patches-5.4/712-fixes.patch |   23 +
  .../realtek/patches-5.4/870-dsa-lag.patch     | 3123 +++++++++++++++++
  .../realtek/patches-5.4/871-brflood-api.patch |  817 +++++
- 37 files changed, 14558 insertions(+), 1413 deletions(-)
+ 46 files changed, 14520 insertions(+), 1438 deletions(-)
+ delete mode 100644 target/linux/realtek/base-files/lib/preinit/05_set_preinit_iface_realtek
+ delete mode 100644 target/linux/realtek/base-files/lib/preinit/98_remove_preinit_realtek
+ delete mode 100644 target/linux/realtek/dts/rtl8380_zyxel_gs1900-8.dts
  create mode 100644 target/linux/realtek/dts/rtl8392_edgecore_ecs4100-12ph.dts
  create mode 100644 target/linux/realtek/dts/rtl839x.dtsi
  delete mode 100644 target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/rtl838x.h
@@ -61,17 +73,10 @@ Signed-off-by: John Crispin <john@phrozen.org>
  create mode 100644 target/linux/realtek/patches-5.4/871-brflood-api.patch
 
 diff --git a/package/boot/uboot-envtools/files/realtek b/package/boot/uboot-envtools/files/realtek
-index cce0628ffc..a4b7089d62 100644
+index a91ca82604..7b73679104 100644
 --- a/package/boot/uboot-envtools/files/realtek
 +++ b/package/boot/uboot-envtools/files/realtek
-@@ -11,11 +11,18 @@ case "$board" in
- d-link,dgs-1210-16|\
- d-link,dgs-1210-28|\
- d-link,dgs-1210-10p|\
-+zyxel,gs1900-8hp-v1|\
-+zyxel,gs1900-8hp-v2|\
- zyxel,gs1900-10hp)
- 	idx="$(find_mtd_index u-boot-env)"
+@@ -19,6 +19,11 @@ zyxel,gs1900-10hp)
  	[ -n "$idx" ] && \
  		ubootenv_add_uci_config "/dev/mtd$idx" "0x0" "0x400" "0x10000"
  	;;
@@ -94,7 +99,7 @@ index 699ab817dd..36ca01a696 100755
  
  board=$(board_name)
 diff --git a/target/linux/realtek/base-files/etc/board.d/02_network b/target/linux/realtek/base-files/etc/board.d/02_network
-index 2568fd2e0e..7a53e2ca9e 100755
+index 45ab84ee9e..7a53e2ca9e 100755
 --- a/target/linux/realtek/base-files/etc/board.d/02_network
 +++ b/target/linux/realtek/base-files/etc/board.d/02_network
 @@ -19,12 +19,11 @@ board=$(board_name)
@@ -108,7 +113,7 @@ index 2568fd2e0e..7a53e2ca9e 100755
  done
  ucidef_set_bridge_device switch
  ucidef_set_interface_wan "$lan_list"
--ucidef_set_interface "lan" ifname "lan1:t" protocol "static" vlan 100
+-ucidef_set_interface "lan" device "lan1:t" protocol "static" vlan 100
  
  lan_mac=""
  wan_mac=""
@@ -137,8 +142,39 @@ index 2568fd2e0e..7a53e2ca9e 100755
  netgear,gs110tpp-v1)
  	ucidef_set_poe 130 "$lan_list"
  	;;
+diff --git a/target/linux/realtek/base-files/lib/preinit/05_set_preinit_iface_realtek b/target/linux/realtek/base-files/lib/preinit/05_set_preinit_iface_realtek
+deleted file mode 100644
+index e2a7cf5a69..0000000000
+--- a/target/linux/realtek/base-files/lib/preinit/05_set_preinit_iface_realtek
++++ /dev/null
+@@ -1,13 +0,0 @@
+-set_preinit_iface() {
+-
+-	# Create a switch on lan1 to configure the VLAN 1.
+-	# Without configuring VLAN ID 1 RTL8380 - RTL9300 will not
+-	# forward packets.
+-	ip link add name switch type bridge vlan_filtering 1
+-	ip link set dev lan1 master switch
+-	ip link set lan1 up
+-
+-	pi_ifname=switch
+-}
+-
+-boot_hook_add preinit_main set_preinit_iface
+diff --git a/target/linux/realtek/base-files/lib/preinit/98_remove_preinit_realtek b/target/linux/realtek/base-files/lib/preinit/98_remove_preinit_realtek
+deleted file mode 100644
+index dc5fdb059b..0000000000
+--- a/target/linux/realtek/base-files/lib/preinit/98_remove_preinit_realtek
++++ /dev/null
+@@ -1,6 +0,0 @@
+-remove_switch() {
+-	# delete switch created in 05_set_preinit_iface_realtek again
+-	ip link del name switch
+-}
+-
+-boot_hook_add preinit_main remove_switch
 diff --git a/target/linux/realtek/config-5.4 b/target/linux/realtek/config-5.4
-index 2fbd904376..ced5d5f7ae 100644
+index 51025d5d89..ced5d5f7ae 100644
 --- a/target/linux/realtek/config-5.4
 +++ b/target/linux/realtek/config-5.4
 @@ -2,17 +2,18 @@ CONFIG_ARCH_32BIT_OFF_T=y
@@ -189,14 +225,7 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_GRO_CELLS=y
  CONFIG_HANDLE_DOMAIN_IRQ=y
  CONFIG_HARDWARE_WATCHPOINTS=y
-@@ -82,12 +81,14 @@ CONFIG_HAS_DMA=y
- CONFIG_HAS_IOMEM=y
- CONFIG_HAS_IOPORT_MAP=y
- # CONFIG_HIGH_RES_TIMERS is not set
-+CONFIG_HWMON=y
- CONFIG_HZ=250
- CONFIG_HZ_250=y
- CONFIG_HZ_PERIODIC=y
+@@ -89,6 +88,7 @@ CONFIG_HZ_PERIODIC=y
  CONFIG_I2C=y
  CONFIG_I2C_ALGOBIT=y
  CONFIG_I2C_BOARDINFO=y
@@ -204,12 +233,7 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_I2C_GPIO=y
  CONFIG_INITRAMFS_SOURCE=""
  CONFIG_IRQCHIP=y
-@@ -101,10 +102,13 @@ CONFIG_LEGACY_PTYS=y
- CONFIG_LEGACY_PTY_COUNT=256
- CONFIG_LIBFDT=y
- CONFIG_LOCK_DEBUGGING_SUPPORT=y
-+CONFIG_MARVELL_PHY=y
- CONFIG_MDIO_BUS=y
+@@ -107,6 +107,8 @@ CONFIG_MDIO_BUS=y
  CONFIG_MDIO_DEVICE=y
  CONFIG_MDIO_I2C=y
  CONFIG_MEMFD_CREATE=y
@@ -218,7 +242,7 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_MFD_SYSCON=y
  CONFIG_MIGRATION=y
  CONFIG_MIPS=y
-@@ -136,7 +140,7 @@ CONFIG_NEED_PER_CPU_KM=y
+@@ -138,7 +140,7 @@ CONFIG_NEED_PER_CPU_KM=y
  CONFIG_NET_DEVLINK=y
  CONFIG_NET_DSA=y
  CONFIG_NET_DSA_RTL83XX=y
@@ -227,12 +251,12 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_NET_RTL838X=y
  CONFIG_NET_SWITCHDEV=y
  CONFIG_NO_GENERIC_PCI_IOPORT_MAP=y
-@@ -159,11 +163,17 @@ CONFIG_PINCTRL=y
+@@ -161,12 +163,17 @@ CONFIG_PINCTRL=y
  CONFIG_POWER_RESET=y
  CONFIG_POWER_RESET_SYSCON=y
  CONFIG_PSB6970_PHY=y
 +CONFIG_RATIONAL=y
-+CONFIG_REALTEK_PHY=y
+ CONFIG_REALTEK_PHY=y
 +CONFIG_REALTEK_SOC_PHY=y
  CONFIG_REGMAP=y
 +CONFIG_REGMAP_I2C=y
@@ -245,7 +269,7 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_SERIAL_MCTRL_GPIO=y
  CONFIG_SERIAL_OF_PLATFORM=y
  CONFIG_SFP=y
-@@ -172,7 +182,7 @@ CONFIG_SPI_MASTER=y
+@@ -175,7 +182,7 @@ CONFIG_SPI_MASTER=y
  CONFIG_SPI_MEM=y
  CONFIG_SPI_RTL838X=y
  CONFIG_SRCU=y
@@ -254,7 +278,7 @@ index 2fbd904376..ced5d5f7ae 100644
  CONFIG_SWPHY=y
  CONFIG_SYSCTL_EXCEPTION_TRACE=y
  CONFIG_SYS_HAS_CPU_MIPS32_R1=y
-@@ -184,8 +194,11 @@ CONFIG_SYS_SUPPORTS_BIG_ENDIAN=y
+@@ -187,8 +194,11 @@ CONFIG_SYS_SUPPORTS_BIG_ENDIAN=y
  CONFIG_SYS_SUPPORTS_MIPS16=y
  CONFIG_TARGET_ISA_REV=2
  CONFIG_TICK_CPU_ACCOUNTING=y
@@ -266,50 +290,141 @@ index 2fbd904376..ced5d5f7ae 100644
 +CONFIG_WATCHDOG_CORE=y
  CONFIG_ZLIB_DEFLATE=y
  CONFIG_ZLIB_INFLATE=y
+diff --git a/target/linux/realtek/dts/rtl8380_netgear_gigabit.dtsi b/target/linux/realtek/dts/rtl8380_netgear_gigabit.dtsi
+index 0d34ca5dc2..2cda3c15a3 100644
+--- a/target/linux/realtek/dts/rtl8380_netgear_gigabit.dtsi
++++ b/target/linux/realtek/dts/rtl8380_netgear_gigabit.dtsi
+@@ -47,30 +47,31 @@
+ 			#size-cells = <1>;
+ 
+ 			partition@0 {
+-				label = "u-boot";
++				label = "loader";
+ 				reg = <0x0000000 0x00e0000>;
+ 				read-only;
+ 			};
+ 
+ 			partition@e0000 {
+-				label = "u-boot-env";
++				label = "bdinfo";
+ 				reg = <0x00e0000 0x0010000>;
+ 				read-only;
+ 			};
+ 
+ 			partition@f0000 {
+-				label = "u-boot-env2";
++				label = "sysinfo";
+ 				reg = <0x00f0000 0x0010000>;
++				read-only;
+ 			};
+ 
+ 			partition@100000 {
+-				label = "jffs";
++				label = "jffs2_cfg";
+ 				reg = <0x0100000 0x0100000>;
+ 				read-only;
+ 			};
+ 
+ 			partition@200000 {
+-				label = "jffs2";
++				label = "jffs2_log";
+ 				reg = <0x0200000 0x0100000>;
+ 				read-only;
+ 			};
 diff --git a/target/linux/realtek/dts/rtl8380_zyxel_gs1900-10hp.dts b/target/linux/realtek/dts/rtl8380_zyxel_gs1900-10hp.dts
-index 92d0e25fc4..a590450055 100644
+index c16028788e..a590450055 100644
 --- a/target/linux/realtek/dts/rtl8380_zyxel_gs1900-10hp.dts
 +++ b/target/linux/realtek/dts/rtl8380_zyxel_gs1900-10hp.dts
-@@ -55,29 +55,17 @@
- 		port@24 {
- 			reg = <24>;
- 			label = "lan9";
--			phy-mode = "rgmii-id";
--			phy-handle = <&phy24>;
-+			phy-mode = "1000base-x";
-+			managed = "in-band-status";
- 			sfp = <&sfp0>;
--
--			fixed-link {
--				speed = <1000>;
--				full-duplex;
--				pause;
--			};
- 		};
- 
- 		port@26 {
- 			reg = <26>;
- 			label = "lan10";
--			phy-mode = "rgmii-id";
--			phy-handle = <&phy26>;
-+			phy-mode = "1000base-x";
-+			managed = "in-band-status";
- 			sfp = <&sfp1>;
--
--			fixed-link {
--				speed = <1000>;
--				full-duplex;
--				pause;
--			};
- 		};
+@@ -17,7 +17,7 @@
  	};
- };
+ 
+ 	sfp0: sfp-p9 {
+-		compatible = "sff,sfp";
++		compatible = "_sff,sfp";
+ 		i2c-bus = <&i2c0>;
+ 		los-gpio = <&gpio1 27 GPIO_ACTIVE_HIGH>;
+ 		tx-fault-gpio = <&gpio1 22 GPIO_ACTIVE_HIGH>;
+@@ -36,7 +36,7 @@
+ 	};
+ 
+ 	sfp1: sfp-p10 {
+-		compatible = "sff,sfp";
++		compatible = "_sff,sfp";
+ 		i2c-bus = <&i2c1>;
+ 		los-gpio = <&gpio1 33 GPIO_ACTIVE_HIGH>;
+ 		tx-fault-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+diff --git a/target/linux/realtek/dts/rtl8380_zyxel_gs1900-8.dts b/target/linux/realtek/dts/rtl8380_zyxel_gs1900-8.dts
+deleted file mode 100644
+index e9c5efe603..0000000000
+--- a/target/linux/realtek/dts/rtl8380_zyxel_gs1900-8.dts
++++ /dev/null
+@@ -1,12 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-or-later
+-
+-#include "rtl8380_zyxel_gs1900.dtsi"
+-
+-/ {
+-	compatible = "zyxel,gs1900-8", "realtek,rtl838x-soc";
+-	model = "ZyXEL GS1900-8 Switch";
+-};
+-
+-&gpio1 {
+-	/delete-node/ poe_enable;
+-};
+diff --git a/target/linux/realtek/dts/rtl8380_zyxel_gs1900.dtsi b/target/linux/realtek/dts/rtl8380_zyxel_gs1900.dtsi
+index d61ac3b2b8..c4441ec30e 100644
+--- a/target/linux/realtek/dts/rtl8380_zyxel_gs1900.dtsi
++++ b/target/linux/realtek/dts/rtl8380_zyxel_gs1900.dtsi
+@@ -79,6 +79,7 @@
+ 			partition@50000 {
+ 				label = "u-boot-env2";
+ 				reg = <0x50000 0x10000>;
++				read-only;
+ 			};
+ 			partition@60000 {
+ 				label = "jffs";
+diff --git a/target/linux/realtek/dts/rtl8382_allnet_all-sg8208m.dts b/target/linux/realtek/dts/rtl8382_allnet_all-sg8208m.dts
+index fdcc01fdac..681d699e8a 100644
+--- a/target/linux/realtek/dts/rtl8382_allnet_all-sg8208m.dts
++++ b/target/linux/realtek/dts/rtl8382_allnet_all-sg8208m.dts
+@@ -79,6 +79,7 @@
+ 			partition@90000 {
+ 				label = "u-boot-env2";
+ 				reg = <0x90000 0x10000>;
++				read-only;
+ 			};
+ 
+ 			partition@a0000 {
+diff --git a/target/linux/realtek/dts/rtl8382_d-link_dgs-1210-10p.dts b/target/linux/realtek/dts/rtl8382_d-link_dgs-1210-10p.dts
+index e2f5e7a4c0..a2ebdad11b 100644
+--- a/target/linux/realtek/dts/rtl8382_d-link_dgs-1210-10p.dts
++++ b/target/linux/realtek/dts/rtl8382_d-link_dgs-1210-10p.dts
+@@ -77,6 +77,7 @@
+ 			partition@c0000 {
+ 				label = "u-boot-env2";
+ 				reg = <0x000c0000 0x40000>;
++				read-only;
+ 			};
+ 			partition@280000 {
+ 				label = "firmware";
+diff --git a/target/linux/realtek/dts/rtl8382_d-link_dgs-1210.dtsi b/target/linux/realtek/dts/rtl8382_d-link_dgs-1210.dtsi
+index a14738c8a9..e41c6f9f22 100644
+--- a/target/linux/realtek/dts/rtl8382_d-link_dgs-1210.dtsi
++++ b/target/linux/realtek/dts/rtl8382_d-link_dgs-1210.dtsi
+@@ -61,6 +61,7 @@
+ 			partition@c0000 {
+ 				label = "u-boot-env2";
+ 				reg = <0x000c0000 0x40000>;
++				read-only;
+ 			};
+ 			partition@280000 {
+ 				label = "firmware";
 diff --git a/target/linux/realtek/dts/rtl8392_edgecore_ecs4100-12ph.dts b/target/linux/realtek/dts/rtl8392_edgecore_ecs4100-12ph.dts
 new file mode 100644
-index 0000000000..7b7b39f417
+index 0000000000..7de5c5f053
 --- /dev/null
 +++ b/target/linux/realtek/dts/rtl8392_edgecore_ecs4100-12ph.dts
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,301 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
 +#include "rtl839x.dtsi"
@@ -488,10 +603,14 @@ index 0000000000..7b7b39f417
 +				reg = <0x100000 0x100000>;
 +				read-only;
 +			};
-+			partition@b260000 {
++			partition@200000 {
 +				label = "firmware";
-+				reg = <0x200000 0xe00000>;
++				reg = <0x200000 0xdf0000>;
 +				compatible = "openwrt,uimage", "denx,uimage";
++			};
++			partition@ff0000 {
++				label = "certificates";
++				reg = <0xff0000 0x10000>;
 +			};
 +		};
 +	};
@@ -868,7 +987,7 @@ index 016184c3d9..8752c79700 100644
 -	rtl838x.o rtl839x.o rtl930x.o rtl931x.o debugfs.o qos.o
 +	rtl838x.o rtl839x.o rtl930x.o rtl931x.o debugfs.o qos.o tc.o
 diff --git a/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/common.c b/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/common.c
-index 698f2892ea..079dec0f9c 100644
+index 6940afa7f2..079dec0f9c 100644
 --- a/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/common.c
 +++ b/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/common.c
 @@ -2,6 +2,11 @@
@@ -973,17 +1092,6 @@ index 698f2892ea..079dec0f9c 100644
  		// Check for the integrated SerDes of the RTL8380M first
  		if (of_property_read_bool(dn, "phy-is-integrated")
  			&& priv->id == 0x8380 && pn >= 24) {
-@@ -368,8 +351,8 @@ static int __init rtl83xx_mdio_probe(struct rtl838x_switch_priv *priv)
- 
- 	/* Enable PHY control via SoC */
- 	if (priv->family_id == RTL8380_FAMILY_ID) {
--		/* Enable PHY control via SoC */
--		sw_w32_mask(0, BIT(15), RTL838X_SMI_GLB_CTRL);
-+		/* Enable SerDes NWAY and PHY control via SoC */
-+		sw_w32_mask(BIT(7), BIT(15), RTL838X_SMI_GLB_CTRL);
- 	} else {
- 		/* Disable PHY polling via SoC */
- 		sw_w32_mask(BIT(7), 0, RTL839X_SMI_GLB_CTRL);
 @@ -429,14 +412,17 @@ int rtl83xx_lag_add(struct dsa_switch *ds, int group, int port)
  	}
  
@@ -1191,7 +1299,7 @@ index 698f2892ea..079dec0f9c 100644
  
  	if ((event != NETDEV_CHANGEUPPER) && (event != NETDEV_CHANGELOWERSTATE))
  		return NOTIFY_DONE;
-@@ -550,12 +692,712 @@ static int rtl83xx_netdevice_event(struct notifier_block *this,
+@@ -550,6 +692,707 @@ static int rtl83xx_netdevice_event(struct notifier_block *this,
  	return NOTIFY_DONE;
  }
  
@@ -1899,13 +2007,7 @@ index 698f2892ea..079dec0f9c 100644
  static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  {
  	int err = 0, i;
- 	struct rtl838x_switch_priv *priv;
- 	struct device *dev = &pdev->dev;
--	u64 irq_mask;
- 	u64 bpdu_mask;
- 
- 	pr_debug("Probing RTL838X switch device\n");
-@@ -571,19 +1413,24 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -570,19 +1413,24 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  	if (!priv)
  		return -ENOMEM;
  
@@ -1932,7 +2034,7 @@ index 698f2892ea..079dec0f9c 100644
  		priv->ds->ops = &rtl83xx_switch_ops;
  		priv->cpu_port = RTL838X_CPU_PORT;
  		priv->port_mask = 0x1f;
-@@ -592,10 +1439,14 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -591,10 +1439,14 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		priv->r = &rtl838x_reg;
  		priv->ds->num_ports = 29;
  		priv->fib_entries = 8192;
@@ -1948,7 +2050,7 @@ index 698f2892ea..079dec0f9c 100644
  		priv->ds->ops = &rtl83xx_switch_ops;
  		priv->cpu_port = RTL839X_CPU_PORT;
  		priv->port_mask = 0x3f;
-@@ -604,10 +1455,14 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -603,10 +1455,14 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		priv->r = &rtl839x_reg;
  		priv->ds->num_ports = 53;
  		priv->fib_entries = 16384;
@@ -1964,7 +2066,7 @@ index 698f2892ea..079dec0f9c 100644
  		priv->ds->ops = &rtl930x_switch_ops;
  		priv->cpu_port = RTL930X_CPU_PORT;
  		priv->port_mask = 0x1f;
-@@ -616,11 +1471,15 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -615,11 +1471,15 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		priv->r = &rtl930x_reg;
  		priv->ds->num_ports = 29;
  		priv->fib_entries = 16384;
@@ -1981,7 +2083,7 @@ index 698f2892ea..079dec0f9c 100644
  		priv->ds->ops = &rtl930x_switch_ops;
  		priv->cpu_port = RTL931X_CPU_PORT;
  		priv->port_mask = 0x3f;
-@@ -629,16 +1488,23 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -628,16 +1488,23 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		priv->r = &rtl931x_reg;
  		priv->ds->num_ports = 57;
  		priv->fib_entries = 16384;
@@ -2007,7 +2109,7 @@ index 698f2892ea..079dec0f9c 100644
  		 */
  		return err;
  	}
-@@ -648,11 +1514,14 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -647,6 +1514,9 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		return err;
  	}
  
@@ -2016,16 +2118,8 @@ index 698f2892ea..079dec0f9c 100644
 +
  	/* Enable link and media change interrupts. Are the SERDES masks needed? */
  	sw_w32_mask(0, 3, priv->r->isr_glb_src);
--	
--	priv->r->set_port_reg_le(irq_mask, priv->r->isr_port_link_sts_chg);
--	priv->r->set_port_reg_le(irq_mask, priv->r->imr_port_link_sts_chg);
-+
-+	priv->r->set_port_reg_le(priv->irq_mask, priv->r->isr_port_link_sts_chg);
-+	priv->r->set_port_reg_le(priv->irq_mask, priv->r->imr_port_link_sts_chg);
  
- 	priv->link_state_irq = platform_get_irq(pdev, 0);
- 	pr_info("LINK state irq: %d\n", priv->link_state_irq);
-@@ -687,16 +1556,50 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -686,16 +1556,50 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  
  	rtl83xx_setup_qos(priv);
  
@@ -2079,7 +2173,7 @@ index 698f2892ea..079dec0f9c 100644
  	// Flood BPDUs to all ports including cpu-port
  	if (soc_info.family != RTL9300_FAMILY_ID) { // TODO: Port this functionality
  		bpdu_mask = soc_info.family == RTL8380_FAMILY_ID ? 0x1FFFFFFF : 0x1FFFFFFFFFFFFF;
-@@ -706,8 +1609,17 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
+@@ -705,8 +1609,17 @@ static int __init rtl83xx_sw_probe(struct platform_device *pdev)
  		sw_w32(7, priv->r->spcl_trap_eapol_ctrl);
  
  		rtl838x_dbgfs_init(priv);
@@ -2561,7 +2655,7 @@ index 4f81408453..29294c4829 100644
 +	debugfs_create_file("drop_counters", 0400, dbg_dir, priv, &drop_counter_fops);
 +}
 diff --git a/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/dsa.c b/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/dsa.c
-index e0832c42b8..2733d1e630 100644
+index 987b47dc8f..2733d1e630 100644
 --- a/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/dsa.c
 +++ b/target/linux/realtek/files-5.4/drivers/net/dsa/rtl83xx/dsa.c
 @@ -1,4 +1,4 @@
@@ -2728,7 +2822,7 @@ index e0832c42b8..2733d1e630 100644
  	return 0;
  }
  
-@@ -242,9 +243,10 @@ static void rtl83xx_phylink_validate(struct dsa_switch *ds, int port,
+@@ -242,7 +243,7 @@ static void rtl83xx_phylink_validate(struct dsa_switch *ds, int port,
  	struct rtl838x_switch_priv *priv = ds->priv;
  	__ETHTOOL_DECLARE_LINK_MODE_MASK(mask) = { 0, };
  
@@ -2736,11 +2830,8 @@ index e0832c42b8..2733d1e630 100644
 +	pr_debug("In %s port %d, state is %d", __func__, port, state->interface);
  
  	if (!phy_interface_mode_is_rgmii(state->interface) &&
-+	    state->interface != PHY_INTERFACE_MODE_NA &&
- 	    state->interface != PHY_INTERFACE_MODE_1000BASEX &&
- 	    state->interface != PHY_INTERFACE_MODE_MII &&
- 	    state->interface != PHY_INTERFACE_MODE_REVMII &&
-@@ -278,6 +280,10 @@ static void rtl83xx_phylink_validate(struct dsa_switch *ds, int port,
+ 	    state->interface != PHY_INTERFACE_MODE_NA &&
+@@ -279,6 +280,10 @@ static void rtl83xx_phylink_validate(struct dsa_switch *ds, int port,
  	if (port >= 24 && port <= 27 && priv->family_id == RTL8380_FAMILY_ID)
  		phylink_set(mask, 1000baseX_Full);
  
@@ -2751,16 +2842,16 @@ index e0832c42b8..2733d1e630 100644
  	phylink_set(mask, 10baseT_Half);
  	phylink_set(mask, 10baseT_Full);
  	phylink_set(mask, 100baseT_Half);
-@@ -310,7 +316,7 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
+@@ -311,7 +316,7 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
  	link = priv->r->get_port_reg_le(priv->r->mac_link_sts);
  	if (link & BIT_ULL(port))
  		state->link = 1;
--	pr_info("%s: link state: %llx\n", __func__, link & BIT_ULL(port));
+-	pr_debug("%s: link state: %llx\n", __func__, link & BIT_ULL(port));
 +	pr_debug("%s: link state port %d: %llx\n", __func__, port, link & BIT_ULL(port));
  
  	state->duplex = 0;
  	if (priv->r->get_port_reg_le(priv->r->mac_link_dup_sts) & BIT_ULL(port))
-@@ -329,7 +335,8 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
+@@ -330,7 +335,8 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
  		state->speed = SPEED_1000;
  		break;
  	case 3:
@@ -2770,64 +2861,15 @@ index e0832c42b8..2733d1e630 100644
  			state->speed = SPEED_2500;
  		else
  			state->speed = SPEED_100; /* Is in fact 500Mbit */
-@@ -343,6 +350,43 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
+@@ -344,7 +350,6 @@ static int rtl83xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
  	return 1;
  }
  
-+static void rtl83xx_config_interface(int port, phy_interface_t interface)
-+{
-+	u32 old, int_shift, sds_shift;
-+
-+	switch (port) {
-+	case 24:
-+		int_shift = 0;
-+		sds_shift = 5;
-+		break;
-+	case 26:
-+		int_shift = 3;
-+		sds_shift = 0;
-+		break;
-+	default:
-+		return;
-+	}
-+
-+	old = sw_r32(RTL838X_SDS_MODE_SEL);
-+	switch (interface) {
-+	case PHY_INTERFACE_MODE_1000BASEX:
-+		if ((old >> sds_shift & 0x1f) == 4)
-+			return;
-+		sw_w32_mask(0x7 << int_shift, 1 << int_shift, RTL838X_INT_MODE_CTRL);
-+		sw_w32_mask(0x1f << sds_shift, 4 << sds_shift, RTL838X_SDS_MODE_SEL);
-+		break;
-+	case PHY_INTERFACE_MODE_SGMII:
-+		if ((old >> sds_shift & 0x1f) == 2)
-+			return;
-+		sw_w32_mask(0x7 << int_shift, 2 << int_shift, RTL838X_INT_MODE_CTRL);
-+		sw_w32_mask(0x1f << sds_shift, 2 << sds_shift, RTL838X_SDS_MODE_SEL);
-+		break;
-+	default:
-+		return;
-+	}
-+	pr_debug("configured port %d for interface %s\n", port, phy_modes(interface));
-+}
-+
- static void rtl83xx_phylink_mac_config(struct dsa_switch *ds, int port,
- 					unsigned int mode,
- 					const struct phylink_link_state *state)
-@@ -376,10 +420,11 @@ static void rtl83xx_phylink_mac_config(struct dsa_switch *ds, int port,
- 	reg = sw_r32(priv->r->mac_force_mode_ctrl(port));
- 	/* Auto-Negotiation does not work for MAC in RTL8390 */
- 	if (priv->family_id == RTL8380_FAMILY_ID) {
--		if (mode == MLO_AN_PHY) {
-+		if (mode == MLO_AN_PHY || phylink_autoneg_inband(mode)) {
- 			pr_debug("PHY autonegotiates\n");
- 			reg |= BIT(2);
- 			sw_w32(reg, priv->r->mac_force_mode_ctrl(port));
-+			rtl83xx_config_interface(port, state->interface);
- 			return;
- 		}
- 	}
-@@ -483,6 +528,31 @@ static int rtl83xx_get_sset_count(struct dsa_switch *ds, int port, int sset)
+-
+ static void rtl83xx_config_interface(int port, phy_interface_t interface)
+ {
+ 	u32 old, int_shift, sds_shift;
+@@ -523,6 +528,31 @@ static int rtl83xx_get_sset_count(struct dsa_switch *ds, int port, int sset)
  	return ARRAY_SIZE(rtl83xx_mib);
  }
  
@@ -2859,7 +2901,7 @@ index e0832c42b8..2733d1e630 100644
  static int rtl83xx_port_enable(struct dsa_switch *ds, int port,
  				struct phy_device *phydev)
  {
-@@ -503,18 +573,23 @@ static int rtl83xx_port_enable(struct dsa_switch *ds, int port,
+@@ -543,18 +573,23 @@ static int rtl83xx_port_enable(struct dsa_switch *ds, int port,
  
  	/* add port to switch mask of CPU_PORT */
  	priv->r->traffic_enable(priv->cpu_port, port);
@@ -2886,7 +2928,7 @@ index e0832c42b8..2733d1e630 100644
  static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
  {
  	struct rtl838x_switch_priv *priv = ds->priv;
-@@ -528,6 +603,7 @@ static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
+@@ -568,6 +603,7 @@ static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
  	// BUG: This does not work on RTL931X
  	/* remove port from switch mask of CPU_PORT */
  	priv->r->traffic_disable(priv->cpu_port, port);
@@ -2894,7 +2936,7 @@ index e0832c42b8..2733d1e630 100644
  
  	/* remove all other ports in the same bridge from switch mask of port */
  	v = priv->r->traffic_get(port);
-@@ -537,58 +613,55 @@ static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
+@@ -577,58 +613,55 @@ static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
  	priv->ports[port].enable = false;
  }
  
@@ -2983,7 +3025,7 @@ index e0832c42b8..2733d1e630 100644
  	return 0;
  }
  
-@@ -618,7 +691,7 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
+@@ -658,7 +691,7 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
  					struct net_device *bridge)
  {
  	struct rtl838x_switch_priv *priv = ds->priv;
@@ -2992,7 +3034,7 @@ index e0832c42b8..2733d1e630 100644
  	int i;
  
  	pr_debug("%s %x: %d %llx", __func__, (u32)priv, port, port_bitmap);
-@@ -634,10 +707,11 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
+@@ -674,10 +707,11 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
  			if (priv->ports[i].enable)
  				priv->r->traffic_enable(i, port);
  
@@ -3006,7 +3048,7 @@ index e0832c42b8..2733d1e630 100644
  
  	/* Add all other ports to this port matrix. */
  	if (priv->ports[port].enable) {
-@@ -656,7 +730,7 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
+@@ -696,7 +730,7 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
  					struct net_device *bridge)
  {
  	struct rtl838x_switch_priv *priv = ds->priv;
@@ -3015,7 +3057,7 @@ index e0832c42b8..2733d1e630 100644
  	int i;
  
  	pr_debug("%s %x: %d", __func__, (u32)priv, port);
-@@ -671,13 +745,14 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
+@@ -711,13 +745,14 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
  		if (dsa_is_user_port(ds, i) && i != port) {
  			if (dsa_to_port(ds, i)->bridge_dev != bridge)
  				continue;
@@ -3033,7 +3075,7 @@ index e0832c42b8..2733d1e630 100644
  
  	/* Add all other ports to this port matrix. */
  	if (priv->ports[port].enable) {
-@@ -789,7 +864,6 @@ static int rtl83xx_vlan_filtering(struct dsa_switch *ds, int port,
+@@ -829,7 +864,6 @@ static int rtl83xx_vlan_filtering(struct dsa_switch *ds, int port,
  				  bool vlan_filtering)
  {
  	struct rtl838x_switch_priv *priv = ds->priv;
@@ -3041,7 +3083,7 @@ index e0832c42b8..2733d1e630 100644
  	pr_debug("%s: port %d\n", __func__, port);
  	mutex_lock(&priv->reg_mutex);
  
-@@ -804,14 +878,15 @@ static int rtl83xx_vlan_filtering(struct dsa_switch *ds, int port,
+@@ -844,14 +878,15 @@ static int rtl83xx_vlan_filtering(struct dsa_switch *ds, int port,
  		 */
  		if (port != priv->cpu_port)
  			sw_w32_mask(0b10 << ((port % 16) << 1), 0b01 << ((port % 16) << 1),
@@ -3061,7 +3103,7 @@ index e0832c42b8..2733d1e630 100644
  	}
  
  	/* Do we need to do something to the CPU-Port, too? */
-@@ -826,17 +901,16 @@ static int rtl83xx_vlan_prepare(struct dsa_switch *ds, int port,
+@@ -866,17 +901,16 @@ static int rtl83xx_vlan_prepare(struct dsa_switch *ds, int port,
  	struct rtl838x_vlan_info info;
  	struct rtl838x_switch_priv *priv = ds->priv;
  
@@ -3084,7 +3126,7 @@ index e0832c42b8..2733d1e630 100644
  	priv->r->vlan_set_untagged(1, info.untagged_ports);
  	pr_debug("SET: Untagged ports, VLAN %d: %llx\n", 1, info.untagged_ports);
  
-@@ -854,7 +928,7 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
+@@ -894,7 +928,7 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
  	struct rtl838x_switch_priv *priv = ds->priv;
  	int v;
  
@@ -3093,7 +3135,7 @@ index e0832c42b8..2733d1e630 100644
  		port, vlan->vid_begin, vlan->vid_end, vlan->flags);
  
  	if (vlan->vid_begin > 4095 || vlan->vid_end > 4095) {
-@@ -876,9 +950,6 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
+@@ -916,9 +950,6 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
  	}
  
  	for (v = vlan->vid_begin; v <= vlan->vid_end; v++) {
@@ -3103,7 +3145,7 @@ index e0832c42b8..2733d1e630 100644
  		/* Get port memberships of this vlan */
  		priv->r->vlan_tables_read(v, &info);
  
-@@ -899,10 +970,10 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
+@@ -939,10 +970,10 @@ static void rtl83xx_vlan_add(struct dsa_switch *ds, int port,
  			info.untagged_ports |= BIT_ULL(port);
  
  		priv->r->vlan_set_untagged(v, info.untagged_ports);
@@ -3116,7 +3158,7 @@ index e0832c42b8..2733d1e630 100644
  	}
  
  	mutex_unlock(&priv->reg_mutex);
-@@ -938,9 +1009,7 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
+@@ -978,9 +1009,7 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
  
  		/* remove port from both tables */
  		info.untagged_ports &= (~BIT_ULL(port));
@@ -3127,7 +3169,7 @@ index e0832c42b8..2733d1e630 100644
  
  		priv->r->vlan_set_untagged(v, info.untagged_ports);
  		pr_debug("Untagged ports, VLAN %d: %llx\n", v, info.untagged_ports);
-@@ -953,59 +1022,136 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
+@@ -993,59 +1022,136 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
  	return 0;
  }
  
@@ -3298,7 +3340,7 @@ index e0832c42b8..2733d1e630 100644
  	err = -ENOTSUPP;
  out:
  	mutex_unlock(&priv->reg_mutex);
-@@ -1017,41 +1163,29 @@ static int rtl83xx_port_fdb_del(struct dsa_switch *ds, int port,
+@@ -1057,41 +1163,29 @@ static int rtl83xx_port_fdb_del(struct dsa_switch *ds, int port,
  {
  	struct rtl838x_switch_priv *priv = ds->priv;
  	u64 mac = ether_addr_to_u64(addr);
@@ -3353,7 +3395,7 @@ index e0832c42b8..2733d1e630 100644
  		goto out;
  	}
  	err = -ENOENT;
-@@ -1066,9 +1200,8 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
+@@ -1106,9 +1200,8 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
  	struct rtl838x_l2_entry e;
  	struct rtl838x_switch_priv *priv = ds->priv;
  	int i;
@@ -3365,7 +3407,7 @@ index e0832c42b8..2733d1e630 100644
  
  	mutex_lock(&priv->reg_mutex);
  
-@@ -1078,14 +1211,26 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
+@@ -1118,14 +1211,26 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
  		if (!e.valid)
  			continue;
  
@@ -3396,7 +3438,7 @@ index e0832c42b8..2733d1e630 100644
  	}
  
  	for (i = 0; i < 64; i++) {
-@@ -1102,17 +1247,180 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
+@@ -1142,17 +1247,180 @@ static int rtl83xx_port_fdb_dump(struct dsa_switch *ds, int port,
  	return 0;
  }
  
@@ -3580,7 +3622,7 @@ index e0832c42b8..2733d1e630 100644
  	for (group = 0; group < 4; group++) {
  		if (priv->mirror_group_ports[group] == mirror->to_local_port)
  			break;
-@@ -1124,41 +1432,42 @@ static int rtl83xx_port_mirror_add(struct dsa_switch *ds, int port,
+@@ -1164,41 +1432,42 @@ static int rtl83xx_port_mirror_add(struct dsa_switch *ds, int port,
  		}
  	}
  
@@ -3639,7 +3681,7 @@ index e0832c42b8..2733d1e630 100644
  }
  
  static void rtl83xx_port_mirror_del(struct dsa_switch *ds, int port,
-@@ -1169,18 +1478,18 @@ static void rtl83xx_port_mirror_del(struct dsa_switch *ds, int port,
+@@ -1209,18 +1478,18 @@ static void rtl83xx_port_mirror_del(struct dsa_switch *ds, int port,
  	int ctrl_reg, dpm_reg, spm_reg;
  
  	pr_debug("In %s\n", __func__);
@@ -3662,7 +3704,7 @@ index e0832c42b8..2733d1e630 100644
  	if (mirror->ingress) {
  		/* Ingress, clear source port matrix */
  		priv->r->mask_port_reg_be(1ULL << port, 0, spm_reg);
-@@ -1188,13 +1497,211 @@ static void rtl83xx_port_mirror_del(struct dsa_switch *ds, int port,
+@@ -1228,13 +1497,211 @@ static void rtl83xx_port_mirror_del(struct dsa_switch *ds, int port,
  		/* Egress, clear destination port matrix */
  		priv->r->mask_port_reg_be(1ULL << port, 0, dpm_reg);
  	}
@@ -3790,7 +3832,7 @@ index e0832c42b8..2733d1e630 100644
 +		err = -EINVAL;
 +		goto out;
 +	}
- 
++
 +out:
 +	mutex_unlock(&priv->reg_mutex);
 +	return 0;
@@ -3831,7 +3873,7 @@ index e0832c42b8..2733d1e630 100644
 +	}
 +	if (!priv->lags_port_members[i])
 +		priv->lag_devs[i] = NULL;
-+
+ 
 +out:
  	mutex_unlock(&priv->reg_mutex);
 +	return 0;
@@ -3875,7 +3917,7 @@ index e0832c42b8..2733d1e630 100644
  }
  
  int dsa_phy_read(struct dsa_switch *ds, int phy_addr, int phy_reg)
-@@ -1268,8 +1775,18 @@ const struct dsa_switch_ops rtl83xx_switch_ops = {
+@@ -1308,8 +1775,18 @@ const struct dsa_switch_ops rtl83xx_switch_ops = {
  	.port_fdb_del		= rtl83xx_port_fdb_del,
  	.port_fdb_dump		= rtl83xx_port_fdb_dump,
  
@@ -3894,7 +3936,7 @@ index e0832c42b8..2733d1e630 100644
  };
  
  const struct dsa_switch_ops rtl930x_switch_ops = {
-@@ -1292,6 +1809,9 @@ const struct dsa_switch_ops rtl930x_switch_ops = {
+@@ -1332,6 +1809,9 @@ const struct dsa_switch_ops rtl930x_switch_ops = {
  	.port_enable		= rtl83xx_port_enable,
  	.port_disable		= rtl83xx_port_disable,
  
@@ -3904,7 +3946,7 @@ index e0832c42b8..2733d1e630 100644
  	.set_ageing_time	= rtl83xx_set_l2aging,
  	.port_bridge_join	= rtl83xx_port_bridge_join,
  	.port_bridge_leave	= rtl83xx_port_bridge_leave,
-@@ -1306,4 +1826,15 @@ const struct dsa_switch_ops rtl930x_switch_ops = {
+@@ -1346,4 +1826,15 @@ const struct dsa_switch_ops rtl930x_switch_ops = {
  	.port_fdb_add		= rtl83xx_port_fdb_add,
  	.port_fdb_del		= rtl83xx_port_fdb_del,
  	.port_fdb_dump		= rtl83xx_port_fdb_dump,
@@ -10709,7 +10751,7 @@ index 0000000000..a92daf03bd
 +	return 0;
 +}
 diff --git a/target/linux/realtek/files-5.4/drivers/net/ethernet/rtl838x_eth.c b/target/linux/realtek/files-5.4/drivers/net/ethernet/rtl838x_eth.c
-index 7931daff07..1da2630d7e 100644
+index 2f678b7384..1da2630d7e 100644
 --- a/target/linux/realtek/files-5.4/drivers/net/ethernet/rtl838x_eth.c
 +++ b/target/linux/realtek/files-5.4/drivers/net/ethernet/rtl838x_eth.c
 @@ -95,7 +95,7 @@ struct notify_b {
@@ -10919,15 +10961,6 @@ index 7931daff07..1da2630d7e 100644
  
  	sw_w32_mask(0, BIT(priv->cpu_port), RTL930X_L2_UNKN_UC_FLD_PMSK);
  	sw_w32(0x217, priv->r->mac_force_mode_ctrl + priv->cpu_port * 4);
-@@ -855,7 +884,7 @@ static int rtl838x_eth_open(struct net_device *ndev)
- 	struct ring_b *ring = priv->membase;
- 	int i, err;
- 
--	pr_info("%s called: RX rings %d(length %d), TX rings %d(length %d)\n",
-+	pr_debug("%s called: RX rings %d(length %d), TX rings %d(length %d)\n",
- 		__func__, priv->rxrings, priv->rxringlen, TXRINGS, TXRINGLEN);
- 
- 	spin_lock_irqsave(&priv->lock, flags);
 @@ -883,28 +912,30 @@ static int rtl838x_eth_open(struct net_device *ndev)
  	switch (priv->family_id) {
  	case RTL8380_FAMILY_ID:
@@ -11024,123 +11057,6 @@ index 7931daff07..1da2630d7e 100644
 +			}
  			dev->stats.rx_packets++;
  			dev->stats.rx_bytes += len;
- 
-@@ -1342,7 +1388,7 @@ static void rtl838x_validate(struct phylink_config *config,
- {
- 	__ETHTOOL_DECLARE_LINK_MODE_MASK(mask) = { 0, };
- 
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 
- 	if (!phy_interface_mode_is_rgmii(state->interface) &&
- 	    state->interface != PHY_INTERFACE_MODE_1000BASEX &&
-@@ -1404,7 +1450,7 @@ static void rtl838x_mac_an_restart(struct phylink_config *config)
- 	if (priv->family_id != RTL8380_FAMILY_ID)
- 		return;
- 
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 	/* Restart by disabling and re-enabling link */
- 	sw_w32(0x6192D, priv->r->mac_force_mode_ctrl + priv->cpu_port * 4);
- 	mdelay(20);
-@@ -1419,7 +1465,7 @@ static int rtl838x_mac_pcs_get_state(struct phylink_config *config,
- 	struct rtl838x_eth_priv *priv = netdev_priv(dev);
- 	int port = priv->cpu_port;
- 
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 
- 	state->link = priv->r->get_mac_link_sts(port) ? 1 : 0;
- 	state->duplex = priv->r->get_mac_link_dup_sts(port) ? 1 : 0;
-@@ -1456,7 +1502,7 @@ static void rtl838x_mac_link_down(struct phylink_config *config,
- 	struct net_device *dev = container_of(config->dev, struct net_device, dev);
- 	struct rtl838x_eth_priv *priv = netdev_priv(dev);
- 
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 	/* Stop TX/RX to port */
- 	sw_w32_mask(0x03, 0, priv->r->mac_port_ctrl(priv->cpu_port));
- }
-@@ -1468,7 +1514,7 @@ static void rtl838x_mac_link_up(struct phylink_config *config, unsigned int mode
- 	struct net_device *dev = container_of(config->dev, struct net_device, dev);
- 	struct rtl838x_eth_priv *priv = netdev_priv(dev);
- 
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 	/* Restart TX/RX to port */
- 	sw_w32_mask(0, 0x03, priv->r->mac_port_ctrl(priv->cpu_port));
- }
-@@ -1479,7 +1525,7 @@ static void rtl838x_set_mac_hw(struct net_device *dev, u8 *mac)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&priv->lock, flags);
--	pr_info("In %s\n", __func__);
-+	pr_debug("In %s\n", __func__);
- 	sw_w32((mac[0] << 8) | mac[1], priv->r->mac);
- 	sw_w32((mac[2] << 24) | (mac[3] << 16) | (mac[4] << 8) | mac[5], priv->r->mac + 4);
- 
-@@ -1547,7 +1593,7 @@ static int rtl838x_get_link_ksettings(struct net_device *ndev,
- {
- 	struct rtl838x_eth_priv *priv = netdev_priv(ndev);
- 
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	return phylink_ethtool_ksettings_get(priv->phylink, cmd);
- }
- 
-@@ -1556,7 +1602,7 @@ static int rtl838x_set_link_ksettings(struct net_device *ndev,
- {
- 	struct rtl838x_eth_priv *priv = netdev_priv(ndev);
- 
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	return phylink_ethtool_ksettings_set(priv->phylink, cmd);
- }
- 
-@@ -1678,7 +1724,7 @@ static int rtl931x_mdio_write(struct mii_bus *bus, int mii_id,
- 
- static int rtl838x_mdio_reset(struct mii_bus *bus)
- {
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	/* Disable MAC polling the PHY so that we can start configuration */
- 	sw_w32(0x00000000, RTL838X_SMI_POLL_CTRL);
- 
-@@ -1693,7 +1739,7 @@ static int rtl839x_mdio_reset(struct mii_bus *bus)
- {
- 	return 0;
- 
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	/* BUG: The following does not work, but should! */
- 	/* Disable MAC polling the PHY so that we can start configuration */
- 	sw_w32(0x00000000, RTL839X_SMI_PORT_POLLING_CTRL);
-@@ -1710,7 +1756,7 @@ static int rtl931x_mdio_reset(struct mii_bus *bus)
- 	sw_w32(0x00000000, RTL931X_SMI_PORT_POLLING_CTRL);
- 	sw_w32(0x00000000, RTL931X_SMI_PORT_POLLING_CTRL + 4);
- 
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 
- 	return 0;
- }
-@@ -1767,7 +1813,7 @@ static int rtl838x_mdio_init(struct rtl838x_eth_priv *priv)
- 	struct device_node *mii_np;
- 	int ret;
- 
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	mii_np = of_get_child_by_name(priv->pdev->dev.of_node, "mdio-bus");
- 
- 	if (!mii_np) {
-@@ -1827,7 +1873,7 @@ err_put_node:
- 
- static int rtl838x_mdio_remove(struct rtl838x_eth_priv *priv)
- {
--	pr_info("%s called\n", __func__);
-+	pr_debug("%s called\n", __func__);
- 	if (!priv->mii_bus)
- 		return 0;
  
 @@ -1837,6 +1883,40 @@ static int rtl838x_mdio_remove(struct rtl838x_eth_priv *priv)
  	return 0;
@@ -13181,10 +13097,73 @@ index 0000000000..7c6d060210
 +
 +module_dsa_tag_driver(trailer_netdev_ops);
 diff --git a/target/linux/realtek/image/Makefile b/target/linux/realtek/image/Makefile
-index 424726c8a9..a4b2ea892c 100644
+index 18e5fedb9b..a4b2ea892c 100644
 --- a/target/linux/realtek/image/Makefile
 +++ b/target/linux/realtek/image/Makefile
-@@ -118,4 +118,13 @@ define Device/zyxel_gs1900-8hp-v2
+@@ -6,8 +6,6 @@ include $(INCLUDE_DIR)/image.mk
+ KERNEL_LOADADDR = 0x80000000
+ KERNEL_ENTRY = 0x80000400
+ 
+-DEVICE_VARS += ZYXEL_VERS
+-
+ define Build/zyxel-vers
+        ( echo VERS;\
+        for hw in $(1); do\
+@@ -86,45 +84,47 @@ define Device/netgear_gs110tpp-v1
+ endef
+ TARGET_DEVICES += netgear_gs110tpp-v1
+ 
+-define Device/zyxel_gs1900
++define Device/zyxel_gs1900-10hp
+   SOC := rtl8380
+   IMAGE_SIZE := 6976k
+   DEVICE_VENDOR := ZyXEL
+-  UIMAGE_MAGIC := 0x83800000
+-  KERNEL_INITRAMFS := kernel-bin | append-dtb | gzip | zyxel-vers $$$$(ZYXEL_VERS) | \
+-	uImage gzip
+-endef
+-
+-define Device/zyxel_gs1900-10hp
+-  $(Device/zyxel_gs1900)
+   DEVICE_MODEL := GS1900-10HP
+-  ZYXEL_VERS := AAZI
++  UIMAGE_MAGIC := 0x83800000
++  KERNEL_INITRAMFS := kernel-bin | append-dtb | gzip | zyxel-vers AAZI | uImage gzip
+ endef
+ TARGET_DEVICES += zyxel_gs1900-10hp
+ 
+-define Device/zyxel_gs1900-8
+-  $(Device/zyxel_gs1900)
+-  DEVICE_MODEL := GS1900-8
+-  ZYXEL_VERS := AAHH
+-endef
+-TARGET_DEVICES += zyxel_gs1900-8
+-
+ define Device/zyxel_gs1900-8hp-v1
+-  $(Device/zyxel_gs1900)
++  SOC := rtl8380
++  IMAGE_SIZE := 6976k
++  DEVICE_VENDOR := ZyXEL
+   DEVICE_MODEL := GS1900-8HP
+   DEVICE_VARIANT := v1
+-  ZYXEL_VERS := AAHI
+   DEVICE_PACKAGES += lua-rs232
++  UIMAGE_MAGIC := 0x83800000
++  KERNEL_INITRAMFS := kernel-bin | append-dtb | gzip | zyxel-vers AAHI | uImage gzip
+ endef
+ TARGET_DEVICES += zyxel_gs1900-8hp-v1
+ 
+ define Device/zyxel_gs1900-8hp-v2
+-  $(Device/zyxel_gs1900)
++  SOC := rtl8380
++  IMAGE_SIZE := 6976k
++  DEVICE_VENDOR := ZyXEL
+   DEVICE_MODEL := GS1900-8HP
+   DEVICE_VARIANT := v2
+-  ZYXEL_VERS := AAHI
+   DEVICE_PACKAGES += lua-rs232
++  UIMAGE_MAGIC := 0x83800000
++  KERNEL_INITRAMFS := kernel-bin | append-dtb | gzip | zyxel-vers AAHI | uImage gzip
  endef
  TARGET_DEVICES += zyxel_gs1900-8hp-v2
  
@@ -13198,6 +13177,19 @@ index 424726c8a9..a4b2ea892c 100644
 +TARGET_DEVICES += edgecore_ecs4100-12ph
 +
  $(eval $(call BuildImage))
+diff --git a/target/linux/realtek/patches-5.4/300-mips-add-rtl838x-platform.patch b/target/linux/realtek/patches-5.4/300-mips-add-rtl838x-platform.patch
+index ecc77b2a73..e946a5b1a0 100644
+--- a/target/linux/realtek/patches-5.4/300-mips-add-rtl838x-platform.patch
++++ b/target/linux/realtek/patches-5.4/300-mips-add-rtl838x-platform.patch
+@@ -10,7 +10,7 @@
+  platforms += sgi-ip27
+ --- a/arch/mips/Kconfig
+ +++ b/arch/mips/Kconfig
+-@@ -631,6 +631,26 @@ config RALINK
++@@ -630,6 +630,26 @@ config RALINK
+  	select ARCH_HAS_RESET_CONTROLLER
+  	select RESET_CONTROLLER
+  
 diff --git a/target/linux/realtek/patches-5.4/301-gpio-add-rtl838x-driver.patch b/target/linux/realtek/patches-5.4/301-gpio-add-rtl838x-driver.patch
 index 4f5901d87f..e4bb9d90d2 100644
 --- a/target/linux/realtek/patches-5.4/301-gpio-add-rtl838x-driver.patch

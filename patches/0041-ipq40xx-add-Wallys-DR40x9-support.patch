@@ -1,4 +1,4 @@
-From 5a0366889960ae89594177854b77889cdf22ac63 Mon Sep 17 00:00:00 2001
+From b9474efadfc918d2e41488b147a212ccc5586aae Mon Sep 17 00:00:00 2001
 From: Robert Marko <robert.marko@sartura.hr>
 Date: Fri, 13 Aug 2021 18:28:21 +0200
 Subject: [PATCH] ipq40xx: add Wallys DR40x9 support
@@ -54,10 +54,10 @@ Signed-off-by: Robert Marko <robert.marko@sartura.hr>
  create mode 100644 target/linux/ipq40xx/files/arch/arm/boot/dts/qcom-ipq40x9-dr40x9.dts
 
 diff --git a/package/firmware/ipq-wifi/Makefile b/package/firmware/ipq-wifi/Makefile
-index 87dcf9a769..192e8dcf7e 100644
+index c9d113ae6a..b222ce30d6 100644
 --- a/package/firmware/ipq-wifi/Makefile
 +++ b/package/firmware/ipq-wifi/Makefile
-@@ -49,6 +49,7 @@ ALLWIFIBOARDS:= \
+@@ -51,6 +51,7 @@ ALLWIFIBOARDS:= \
  	plasmacloud_pa2200 \
  	qxwlan_e2600ac \
  	cig_wf610d \
@@ -65,7 +65,7 @@ index 87dcf9a769..192e8dcf7e 100644
  	tp-link_ec420-g1
  
  ALLWIFIPACKAGES:=$(foreach BOARD,$(ALLWIFIBOARDS),ipq-wifi-$(BOARD))
-@@ -135,5 +136,6 @@ $(eval $(call generate-ipq-wifi-package,plasmacloud_pa2200,Plasma Cloud PA2200))
+@@ -139,5 +140,6 @@ $(eval $(call generate-ipq-wifi-package,plasmacloud_pa2200,Plasma Cloud PA2200))
  $(eval $(call generate-ipq-wifi-package,qxwlan_e2600ac,Qxwlan E2600AC))
  $(eval $(call generate-ipq-wifi-package,cig_wf610d,CIG WF_610D))
  $(eval $(call generate-ipq-wifi-package,tp-link_ec420-g1,tp-link EC420-G1))
@@ -135,7 +135,7 @@ literal 0
 HcmV?d00001
 
 diff --git a/target/linux/ipq40xx/base-files/etc/board.d/02_network b/target/linux/ipq40xx/base-files/etc/board.d/02_network
-index 9d03b620ce..cfcf518907 100755
+index 0240798bbb..5a2a3a47f7 100755
 --- a/target/linux/ipq40xx/base-files/etc/board.d/02_network
 +++ b/target/linux/ipq40xx/base-files/etc/board.d/02_network
 @@ -19,7 +19,8 @@ ipq40xx_setup_interfaces()
@@ -163,7 +163,7 @@ index c255707f91..e1f75fd4bd 100755
  
  board_config_flush
 diff --git a/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata b/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
-index 56b9935541..561c8289e7 100644
+index ad2946f636..64bb4efaf8 100644
 --- a/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
 +++ b/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
 @@ -115,7 +115,8 @@ case "$FIRMWARE" in
@@ -176,7 +176,7 @@ index 56b9935541..561c8289e7 100644
  		caldata_extract "0:ART" 0x1000 0x2f20
  		;;
  	devolo,magic-2-wifi-next)
-@@ -227,7 +228,8 @@ case "$FIRMWARE" in
+@@ -232,7 +233,8 @@ case "$FIRMWARE" in
  	plasmacloud,pa2200 |\
  	qxwlan,e2600ac-c1 |\
  	qxwlan,e2600ac-c2 |\
@@ -187,7 +187,7 @@ index 56b9935541..561c8289e7 100644
  		;;
  	devolo,magic-2-wifi-next)
 diff --git a/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh b/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
-index f6fc828134..7ebe0396f6 100644
+index 84abd181dc..8840372ba9 100644
 --- a/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
 +++ b/target/linux/ipq40xx/base-files/lib/upgrade/platform.sh
 @@ -73,6 +73,7 @@ platform_do_upgrade() {
@@ -592,10 +592,10 @@ index 0000000000..cb3296f5e5
 +	status = "okay";
 +};
 diff --git a/target/linux/ipq40xx/image/generic.mk b/target/linux/ipq40xx/image/generic.mk
-index e4e437bb95..7cbfecb233 100644
+index ffaf52b553..251f33dc3a 100644
 --- a/target/linux/ipq40xx/image/generic.mk
 +++ b/target/linux/ipq40xx/image/generic.mk
-@@ -834,6 +834,19 @@ define Device/zyxel_wre6606
+@@ -830,6 +830,19 @@ define Device/zyxel_wre6606
  endef
  TARGET_DEVICES += zyxel_wre6606
  
@@ -616,19 +616,19 @@ index e4e437bb95..7cbfecb233 100644
  	$(call Device/FitImage)
  	$(call Device/UbiFit)
 diff --git a/target/linux/ipq40xx/patches-5.4/901-arm-boot-add-dts-files.patch b/target/linux/ipq40xx/patches-5.4/901-arm-boot-add-dts-files.patch
-index 492cc67b2c..4d686df304 100644
+index 4539709fb0..e57877e6b1 100644
 --- a/target/linux/ipq40xx/patches-5.4/901-arm-boot-add-dts-files.patch
 +++ b/target/linux/ipq40xx/patches-5.4/901-arm-boot-add-dts-files.patch
-@@ -10,7 +10,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
- 
- --- a/arch/arm/boot/dts/Makefile
- +++ b/arch/arm/boot/dts/Makefile
--@@ -837,11 +837,60 @@ dtb-$(CONFIG_ARCH_QCOM) += \
-+@@ -837,11 +837,61 @@ dtb-$(CONFIG_ARCH_QCOM) += \
+@@ -12,7 +12,7 @@ Index: linux-5.4.137/arch/arm/boot/dts/Makefile
+ ===================================================================
+ --- linux-5.4.137.orig/arch/arm/boot/dts/Makefile
+ +++ linux-5.4.137/arch/arm/boot/dts/Makefile
+-@@ -837,11 +837,62 @@ dtb-$(CONFIG_ARCH_QCOM) += \
++@@ -837,11 +837,63 @@ dtb-$(CONFIG_ARCH_QCOM) += \
   	qcom-apq8074-dragonboard.dtb \
   	qcom-apq8084-ifc6540.dtb \
   	qcom-apq8084-mtp.dtb \
-@@ -68,6 +68,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
+@@ -72,6 +72,7 @@ Index: linux-5.4.137/arch/arm/boot/dts/Makefile
  +	qcom-ipq4029-gl-b1300.dtb \
  +	qcom-ipq4029-gl-s1300.dtb \
  +	qcom-ipq4029-mr33.dtb \
