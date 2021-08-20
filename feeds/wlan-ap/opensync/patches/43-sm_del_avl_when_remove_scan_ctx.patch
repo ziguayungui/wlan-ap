@@ -1,0 +1,20 @@
+Index: opensync-2.0.5.0/src/sm/src/sm_scan_schedule.c
+===================================================================
+--- opensync-2.0.5.0.orig/src/sm/src/sm_scan_schedule.c
++++ opensync-2.0.5.0/src/sm/src/sm_scan_schedule.c
+@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBI
+ #include <limits.h>
+ 
+ #include "sm.h"
++#include "nl80211.h"
+ 
+ #define MODULE_ID LOG_MODULE_ID_MAIN
+ 
+@@ -76,6 +77,7 @@ void sm_scan_ctx_free(sm_scan_ctx_t *sca
+ {
+     if (NULL != scan_ctx)
+     {
++        nl80211_scan_remove(scan_ctx->scan_request.radio_cfg->if_name, scan_ctx);
+         free(scan_ctx);
+     }
+ }

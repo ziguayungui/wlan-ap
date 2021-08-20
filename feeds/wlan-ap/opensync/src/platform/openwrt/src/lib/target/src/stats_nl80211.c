@@ -387,17 +387,18 @@ static int nl80211_scan_add(char *name, target_scan_cb_t *scan_cb, void *scan_ct
 {
 	struct nl80211_scan *nl80211_scan = avl_find_element(&nl80211_scan_tree, name, nl80211_scan, avl);
 
-	if (nl80211_scan)
-		nl80211_scan_del(nl80211_scan);
-
-	nl80211_scan = malloc(sizeof(*nl80211_scan));
-	if (!nl80211_scan)
-		return -1;
-	memset(nl80211_scan, 0, sizeof(*nl80211_scan));
-	strncpy(nl80211_scan->name, name, IF_NAMESIZE);
-	nl80211_scan->avl.key = nl80211_scan->name;
-	avl_insert(&nl80211_scan_tree, &nl80211_scan->avl);
-	LOGD("%s: added scan context", name);
+	if (!nl80211_scan) {
+		nl80211_scan = malloc(sizeof(*nl80211_scan));
+		if (!nl80211_scan)
+			return -1;
+		memset(nl80211_scan, 0, sizeof(*nl80211_scan));
+		strncpy(nl80211_scan->name, name, IF_NAMESIZE);
+		nl80211_scan->avl.key = nl80211_scan->name;
+		avl_insert(&nl80211_scan_tree, &nl80211_scan->avl);
+		LOGD("%s: added scan context", name);
+	} else {
+		LOGD("nl80211_scan_add: %s: Reusing the avl\n", name);
+	}
 
 	nl80211_scan->scan_cb = scan_cb;
 	nl80211_scan->scan_ctx = scan_ctx;
@@ -662,4 +663,16 @@ int stats_nl80211_init(void)
 		LOGE("stats_nl80211: Failed to set stats nl socket in the non blocking mode");
 
 	return 0;
+}
+
+void nl80211_scan_remove(char *if_name, void *scan_ctx)
+{
+	struct nl80211_scan *nl80211_scan = nl80211_scan_find(if_name);
+
+	if (nl80211_scan) {
+		if (nl80211_scan->scan_ctx == scan_ctx) {
+			nl80211_scan_del(nl80211_scan);
+		}
+	}
+
 }

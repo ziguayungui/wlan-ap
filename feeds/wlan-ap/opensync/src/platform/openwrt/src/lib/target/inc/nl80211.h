@@ -84,5 +84,5 @@ extern int nl80211_scan_trigger(struct nl_call_param *nl_call_param, uint32_t *c
 extern int nl80211_scan_abort(struct nl_call_param *nl_call_param);
 extern int nl80211_scan_dump(struct nl_call_param *nl_call_param);
 extern int nl80211_get_ssid(struct nl_call_param *nl_call_param);
-
+extern void nl80211_scan_remove(char *if_name, void *scan_ctx);
 #endif
