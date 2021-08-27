@@ -570,6 +570,7 @@ bool radio_state_to_conf(struct schema_Wifi_Radio_State *rstate,
 	RADIO_COPY_STR(hw_type);
 	RADIO_COPY_INT(enabled);
 	RADIO_COPY_INT(channel);
+	RADIO_COPY_STR(channel_mode);
 	RADIO_COPY_INT(tx_power);
 	RADIO_COPY_INT(bcn_int);
 	RADIO_COPY_STR(country);

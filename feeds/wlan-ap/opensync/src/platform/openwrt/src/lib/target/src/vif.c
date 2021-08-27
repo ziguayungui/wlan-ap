@@ -27,6 +27,7 @@
 #include "ovsdb_sync.h"
 #include "rrm_config.h"
 #include "fixup.h"
+#include <libubox/blobmsg_json.h>
 
 #define MODULE_ID LOG_MODULE_ID_VIF
 #define UCI_BUFFER_SIZE 80
@@ -43,105 +44,7 @@ struct blob_buf osu = { };
 
 struct blob_buf mesh = { };
 
-enum {
-	WIF_ATTR_DEVICE,
-	WIF_ATTR_IFNAME,
-	WIF_ATTR_INDEX,
-	WIF_ATTR_MODE,
-	WIF_ATTR_SSID,
-	WIF_ATTR_BSSID,
-	WIF_ATTR_CHANNEL,
-	WIF_ATTR_ENCRYPTION,
-	WIF_ATTR_KEY,
-	WIF_ATTR_DISABLED,
-	WIF_ATTR_HIDDEN,
-	WIF_ATTR_ISOLATE,
-	WIF_ATTR_NETWORK,
-	WIF_ATTR_AUTH_SERVER,
-	WIF_ATTR_AUTH_PORT,
-	WIF_ATTR_AUTH_SECRET,
-	WIF_ATTR_ACCT_SERVER,
-	WIF_ATTR_ACCT_PORT,
-	WIF_ATTR_ACCT_SECRET,
-	WIF_ATTR_ACCT_INTERVAL,
-	WIF_ATTR_REQ_CUI,
-	WIF_ATTR_IEEE80211R,
-	WIF_ATTR_IEEE80211W,
-	WIF_ATTR_MOBILITY_DOMAIN,
-	WIF_ATTR_FT_OVER_DS,
-	WIF_ATTR_FT_PSK_LOCAL,
-	WIF_ATTR_UAPSD,
-	WIF_ATTR_VLAN_ID,
-	WIF_ATTR_VID,
-	WIF_ATTR_MACLIST,
-	WIF_ATTR_MACFILTER,
-	WIF_ATTR_RATELIMIT,
-	WIF_ATTR_URATE,
-	WIF_ATTR_DRATE,
-	WIF_ATTR_CURATE,
-	WIF_ATTR_CDRATE,
-	WIF_ATTR_IEEE80211V,
-	WIF_ATTR_BSS_TRANSITION,
-	WIF_ATTR_DISABLE_EAP_RETRY,
-	WIF_ATTR_IEEE80211K,
-	WIF_ATTR_RTS_THRESHOLD,
-	WIF_ATTR_DTIM_PERIOD,
-	WIF_ATTR_INTERWORKING,
-	WIF_ATTR_HS20,
-	WIF_ATTR_HESSID,
-	WIF_ATTR_ROAMING_CONSORTIUM,
-	WIF_ATTR_VENUE_NAME,
-	WIF_ATTR_VENUE_GROUP,
-	WIF_ATTR_VENUE_TYPE,
-	WIF_ATTR_VENUE_URL,
-	WIF_ATTR_NETWORK_AUTH_TYPE,
-	WIF_ATTR_IPADDR_TYPE_AVAILABILITY,
-	WIF_ATTR_CONNECTION_CAPABILITY,
-	WIF_ATTR_DOMAIN_NAME,
-	WIF_ATTR_MCC_MNC,
-	WIF_ATTR_NAI_REALM,
-	WIF_ATTR_GAS_ADDR3,
-	WIF_ATTR_QOS_MAP_SET,
-	WIF_ATTR_OSEN,
-	WIF_ATTR_ACCESS_NETWORK_TYPE,
-	WIF_ATTR_INTERNET,
-	WIF_ATTR_ESR,
-	WIF_ATTR_ASRA,
-	WIF_ATTR_UESA,
-	WIF_ATTR_DISABLE_DGAF,
-	WIF_ATTR_WAN_METRICS,
-	WIF_ATTR_ANQP_DOMAIN_ID,
-	WIF_ATTR_DEAUTH_REQUEST_TIMEOUT,
-	WIF_ATTR_OPER_FRIENDLY_NAME,
-	WIF_ATTR_OPERATING_CLASS,
-	WIF_ATTR_OPER_ICON,
-	WIF_ATTR_PROBE_ACCEPT_RATE,
-	WIF_ATTR_CLIENT_CONNECT_THRESHOLD,
-	WIF_ATTR_CLIENT_DISCONNECT_THRESHOLD,
-	WIF_ATTR_BEACON_RATE,
-	WIF_ATTR_MCAST_RATE,
-	WIF_ATTR_RADIUS_NAS_ID_ATTR,
-	WIF_ATTR_RADIUS_NAS_IP_ATTR,
-	WIF_ATTR_RADIUS_AUTH_REQ_ATTR,
-	WIF_ATTR_RADIUS_ACCT_REQ_ATTR,
-	WIF_ATTR_MESH_ID,
-	WIF_ATTR_MESH_FWDING,
-	WIF_ATTR_MESH_MCAST_RATE,
-	WIF_ATTR_DYNAMIC_VLAN,
-	WIF_ATTR_DVLAN_FILE,
-	WIF_ATTR_DVLAN_NAMING,
-	WIF_ATTR_DVLAN_BRIDGE,
-	WIF_ATTR_MIN_HW_MODE,
-	WIF_ATTR_11R_R0KH,
-	WIF_ATTR_11R_R1KH,
-	WIF_ATTR_RADPROXY,
-	WIF_ATTR_PROXY_ARP,
-	WIF_ATTR_MCAST_TO_UCAST,
-	WIF_ATTR_AUTH_CACHE,
-	__WIF_ATTR_MAX,
-};
-
-static const struct blobmsg_policy wifi_iface_policy[__WIF_ATTR_MAX] = {
+const struct blobmsg_policy wifi_iface_policy[__WIF_ATTR_MAX] = {
 	[WIF_ATTR_DEVICE] = { .name = "device", .type = BLOBMSG_TYPE_STRING },
 	[WIF_ATTR_MODE] = { .name = "mode", .type = BLOBMSG_TYPE_STRING },
 	[WIF_ATTR_IFNAME] = { .name = "ifname", .type = BLOBMSG_TYPE_STRING },
@@ -236,6 +139,7 @@ static const struct blobmsg_policy wifi_iface_policy[__WIF_ATTR_MAX] = {
 	[WIF_ATTR_PROXY_ARP] = { .name = "proxy_arp", BLOBMSG_TYPE_BOOL },
 	[WIF_ATTR_MCAST_TO_UCAST] = { .name = "multicast_to_unicast", BLOBMSG_TYPE_BOOL },
 	[WIF_ATTR_AUTH_CACHE] = { .name = "auth_cache", BLOBMSG_TYPE_BOOL },
+	[WIF_ATTR_WDS] = { .name = "wds", BLOBMSG_TYPE_BOOL },
 };
 
 const struct uci_blob_param_list wifi_iface_param = {
@@ -309,12 +213,7 @@ const struct uci_blob_param_list wifi_hs20_icon_param = {
 	.params = wifi_hs20_icon_policy,
 };
 
-static struct vif_crypto {
-	char *uci;
-	char *encryption;
-	char *mode;
-	int enterprise;
-} vif_crypto[] = {
+static struct vif_crypto vif_crypto[] = {
 	{ "psk", OVSDB_SECURITY_ENCRYPTION_WPA_PSK, OVSDB_SECURITY_MODE_WPA1, 0 },
 	{ "psk2", OVSDB_SECURITY_ENCRYPTION_WPA_PSK, OVSDB_SECURITY_MODE_WPA2, 0 },
 	{ "psk-mixed", OVSDB_SECURITY_ENCRYPTION_WPA_PSK, OVSDB_SECURITY_MODE_MIXED, 0 },
@@ -331,11 +230,7 @@ static struct vif_crypto {
 extern ovsdb_table_t table_APC_State;
 extern unsigned int radproxy_apc;
 
-/* Custom options table */
-#define SCHEMA_CUSTOM_OPT_SZ            20
-#define SCHEMA_CUSTOM_OPTS_MAX          15
-
-const char custom_options_table[SCHEMA_CUSTOM_OPTS_MAX][SCHEMA_CUSTOM_OPT_SZ] =
+const char custom_options_table[SCHEMA_VIF_CUSTOM_OPTS_MAX][SCHEMA_VIF_CUSTOM_OPT_SZ] =
 {
 	SCHEMA_CONSTS_RATE_LIMIT,
 	SCHEMA_CONSTS_RATE_DL,
@@ -362,7 +257,7 @@ static bool vif_config_custom_opt_get_proxy(
 	const char *val;
 	char value[20];
 
-	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
+	for (i = 0; i < SCHEMA_VIF_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
 		val = SCHEMA_KEY_VAL(vconf->custom_options, opt);
 		if (!val)
@@ -384,8 +279,7 @@ static bool vif_config_custom_opt_get_proxy(
 	return false;
 }
 
-static int vif_config_security_set(struct blob_buf *b,
-				    const struct schema_Wifi_VIF_Config *vconf)
+int vif_config_security_set(struct blob_buf *b, const struct schema_Wifi_VIF_Config *vconf)
 {
 	const char *encryption = SCHEMA_KEY_VAL(vconf->security, SCHEMA_CONSTS_SECURITY_ENCRYPT);
 	const char *mode = SCHEMA_KEY_VAL(vconf->security, SCHEMA_CONSTS_SECURITY_MODE);
@@ -510,84 +404,87 @@ open:
 	return 0;
 }
 
-static void vif_state_security_append(struct schema_Wifi_VIF_State *vstate,
-				      int *index, const char *key, const char *value)
-{
-	STRSCPY(vstate->security_keys[*index], key);
-	STRSCPY(vstate->security[*index], value);
+#define vif_security_append(vif, index, key, value) \
+	STRSCPY(vif->security_keys[index], key); \
+	STRSCPY(vif->security[index], value); \
+	index = index + 1; \
+	vif->security_len = index; 
 
-	*index = *index + 1;
-	vstate->security_len = *index;
+struct vif_crypto *vif_get_vif_crypto_map(struct blob_attr **tb)
+{
+        char *encryption = NULL;
+	unsigned int i;
+
+        if (tb[WIF_ATTR_ENCRYPTION]) {
+                encryption = blobmsg_get_string(tb[WIF_ATTR_ENCRYPTION]);
+                for (i = 0; i < ARRAY_SIZE(vif_crypto); i++)
+                        if (!strcmp(vif_crypto[i].uci, encryption))
+                                return &vif_crypto[i];
+        }
+	return NULL;
 }
 
 static void vif_state_security_get(struct schema_Wifi_VIF_State *vstate,
 				   struct blob_attr **tb)
 {
 	struct vif_crypto *vc = NULL;
-	char *encryption = NULL;
-	unsigned int i;
 	int index = 0;
 	char interval[5];
 
-	if (tb[WIF_ATTR_ENCRYPTION]) {
-		encryption = blobmsg_get_string(tb[WIF_ATTR_ENCRYPTION]);
-		for (i = 0; i < ARRAY_SIZE(vif_crypto); i++)
-			if (!strcmp(vif_crypto[i].uci, encryption))
-				vc = &vif_crypto[i];
-	}
+	vc = vif_get_vif_crypto_map(tb);
 
-	if (!encryption || !vc)
+	if (!vc)
 		goto out_none;
 
 	if (vc->enterprise) {
 		if (!tb[WIF_ATTR_AUTH_SERVER] || !tb[WIF_ATTR_AUTH_PORT] || !tb[WIF_ATTR_AUTH_SECRET])
 			goto out_none;
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_ENCRYPTION,
+		vif_security_append(vstate, index, OVSDB_SECURITY_ENCRYPTION,
 					  vc->encryption);
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_MODE,
+		vif_security_append(vstate, index, OVSDB_SECURITY_MODE,
 					  vc->mode);
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_SERVER_IP,
+		vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_SERVER_IP,
 					  blobmsg_get_string(tb[WIF_ATTR_AUTH_SERVER]));
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_SERVER_PORT,
+		vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_SERVER_PORT,
 					  blobmsg_get_string(tb[WIF_ATTR_AUTH_PORT]));
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_SERVER_SECRET,
+		vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_SERVER_SECRET,
 					  blobmsg_get_string(tb[WIF_ATTR_AUTH_SECRET]));
 
 		if (tb[WIF_ATTR_ACCT_SERVER] && tb[WIF_ATTR_ACCT_PORT] && tb[WIF_ATTR_ACCT_SECRET])
 		{
-			vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_ACCT_IP,
+			vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_ACCT_IP,
 					blobmsg_get_string(tb[WIF_ATTR_ACCT_SERVER]));
-			vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_ACCT_PORT,
+			vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_ACCT_PORT,
 					blobmsg_get_string(tb[WIF_ATTR_ACCT_PORT]));
-			vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_ACCT_SECRET,
+			vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_ACCT_SECRET,
 					blobmsg_get_string(tb[WIF_ATTR_ACCT_SECRET]));
 		}
 
 		if (tb[WIF_ATTR_ACCT_INTERVAL])
 		{
 			sprintf(interval, "%d", blobmsg_get_u32(tb[WIF_ATTR_ACCT_INTERVAL]));
-			vif_state_security_append(vstate, &index, OVSDB_SECURITY_RADIUS_ACCT_INTERVAL,
+			vif_security_append(vstate, index, OVSDB_SECURITY_RADIUS_ACCT_INTERVAL,
 					interval);
 		}
 	} else {
 		if (!tb[WIF_ATTR_KEY])
 			goto out_none;
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_ENCRYPTION,
+		vif_security_append(vstate, index, OVSDB_SECURITY_ENCRYPTION,
 					  vc->encryption);
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_MODE,
+		vif_security_append(vstate, index, OVSDB_SECURITY_MODE,
 					  vc->mode);
-		vif_state_security_append(vstate, &index, OVSDB_SECURITY_KEY,
+		vif_security_append(vstate, index, OVSDB_SECURITY_KEY,
 					  blobmsg_get_string(tb[WIF_ATTR_KEY]));
 	}
 	return;
 
 out_none:
-	vif_state_security_append(vstate, &index, OVSDB_SECURITY_ENCRYPTION,
+	vif_security_append(vstate, index, OVSDB_SECURITY_ENCRYPTION,
 				  OVSDB_SECURITY_ENCRYPTION_OPEN);
 }
 
 
-static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
+void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
                                       const struct schema_Wifi_VIF_Config *vconf)
 {
 	int i;
@@ -600,7 +497,7 @@ static void vif_config_custom_opt_set(struct blob_buf *b, struct blob_buf *del,
 	char mac[ETH_ALEN * 3];
 	struct blob_attr *tb[__WIF_ATTR_MAX] = { };
 
-	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
+	for (i = 0; i < SCHEMA_VIF_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
 		val = SCHEMA_KEY_VAL(vconf->custom_options, opt);
 
@@ -715,7 +612,7 @@ static void vif_state_custom_options_get(struct schema_Wifi_VIF_State *vstate,
 	const char *opt;
 	char *buf = NULL;
 
-	for (i = 0; i < SCHEMA_CUSTOM_OPTS_MAX; i++) {
+	for (i = 0; i < SCHEMA_VIF_CUSTOM_OPTS_MAX; i++) {
 		opt = custom_options_table[i];
 
 		if (strcmp(opt, "rate_limit_en") == 0) {
@@ -909,10 +806,21 @@ bool vif_state_update(struct uci_section *s, struct schema_Wifi_VIF_Config *vcon
 	else
 		SCHEMA_SET_STR(vstate.ssid_broadcast, "enabled");
 
-	if (tb[WIF_ATTR_MODE])
+	if (tb[WIF_ATTR_WDS] && blobmsg_get_bool(tb[WIF_ATTR_WDS])) {
+		if (tb[WIF_ATTR_MODE]) {
+			if (!strcmp(blobmsg_get_string(tb[WIF_ATTR_MODE]), "sta")) {
+				SCHEMA_SET_STR(vstate.mode, "wds-sta");
+			} else {
+				SCHEMA_SET_STR(vstate.mode, "wds-ap");
+			}
+		} else {
+			SCHEMA_SET_STR(vstate.mode, "wds-ap");
+		}
+	} else if (tb[WIF_ATTR_MODE]) {
 		SCHEMA_SET_STR(vstate.mode, blobmsg_get_string(tb[WIF_ATTR_MODE]));
-	else
+	} else {
 		SCHEMA_SET_STR(vstate.mode, "ap");
+	}
 
 	if (vifIsActive)
 		SCHEMA_SET_STR(vstate.state, "up");
@@ -1503,7 +1411,7 @@ static void vif_mesh_opt_set(struct blob_buf *b, struct blob_buf *b1,
 	}
 }
 
-static int mesh_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
+int mesh_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 			const struct schema_Wifi_VIF_Config *vconf,
 			const struct schema_Wifi_VIF_Config_flags *changed)
 {
@@ -1547,7 +1455,8 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 	blobmsg_add_string(&b, "ifname", vconf->if_name);
 	blobmsg_add_string(&b, "device", rconf->if_name);
 	blobmsg_add_string(&b, "mode", "ap");
-
+	blobmsg_add_bool(&del, "wds", 1);
+ 
 	if (changed->enabled)
 		blobmsg_add_bool(&b, "disabled", vconf->enabled ? 0 : 1);
 
@@ -1655,17 +1564,122 @@ static int ap_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
 	return 0;
 }
 
+#if 0
+static int wds_vif_config_set(const struct schema_Wifi_Radio_Config *rconf,
+			const struct schema_Wifi_VIF_Config *vconf,
+			const struct schema_Wifi_VIF_Config_flags *changed)
+{
+	int vid = 0;
+
+	blob_buf_init(&b, 0);
+	blob_buf_init(&del,0);
+	blobmsg_add_string(&b, "ifname", vconf->if_name);
+	blobmsg_add_string(&b, "device", rconf->if_name);
+        if (!strcmp(vconf->mode, "wds-ap")) {
+                blobmsg_add_string(&b, "mode", "ap");
+                blobmsg_add_bool(&b, "wds", 1);
+        } else if (!strcmp(vconf->mode, "wds-sta")) {
+                blobmsg_add_string(&b, "mode", "sta");
+                blobmsg_add_bool(&b, "wds", 1);
+        } else {
+                return -1;
+        }
+
+	blobmsg_add_bool(&b, "disabled", vconf->enabled ? 0 : 1);
+	blobmsg_add_string(&b, "ssid", vconf->ssid);
+	if (!strcmp(vconf->ssid_broadcast, "disabled"))
+		blobmsg_add_bool(&b, "hidden", 1);
+	else
+		blobmsg_add_bool(&b, "hidden", 0);
+	if (vconf->ap_bridge)
+		blobmsg_add_bool(&b, "isolate", 0);
+	else
+		blobmsg_add_bool(&b, "isolate", 1);
+	if (vconf->uapsd_enable)
+		blobmsg_add_bool(&b, "uapsd", 1);
+	else
+		blobmsg_add_bool(&b, "uapsd", 0);
+	blobmsg_add_string(&b, "min_hw_mode", vconf->min_hw_mode);
+
+	if (vconf->ft_mobility_domain) {
+		blobmsg_add_bool(&b, "ieee80211r", 1);
+		blobmsg_add_hex16(&b, "mobility_domain", vconf->ft_mobility_domain);
+		blobmsg_add_bool(&b, "ft_over_ds", 0);
+		blobmsg_add_bool(&b, "reassociation_deadline", 1);
+	} else {
+		blobmsg_add_bool(&b, "ieee80211r", 0);
+	}
+	if (vconf->btm) {
+		blobmsg_add_bool(&b, "ieee80211v", 1);
+		blobmsg_add_bool(&b, "bss_transition", 1);
+	} else {
+		blobmsg_add_bool(&b, "ieee80211v", 0);
+		blobmsg_add_bool(&b, "bss_transition", 0);
+	}
+	blobmsg_add_string(&b, "network", vconf->bridge);
+
+	if (changed->vlan_id && strncmp(vconf->bridge, "gre", strlen("gre"))) {
+		blobmsg_add_u32(&b, "vlan_id", vconf->vlan_id);
+		if (vconf->vlan_id > 2)
+			vid = vconf->vlan_id;
+		blobmsg_add_u32(&b, "vid", vid);
+	}
+
+	if (changed->mac_list_type) {
+		struct blob_attr *a;
+		int i;
+		if (!strcmp(vconf->mac_list_type, "whitelist"))
+			blobmsg_add_string(&b, "macfilter", "allow");
+		else if (!strcmp(vconf->mac_list_type,"blacklist"))
+			blobmsg_add_string(&b, "macfilter", "deny");
+		else
+			blobmsg_add_string(&b, "macfilter", "disable");
+
+		a = blobmsg_open_array(&b, "maclist");
+		for (i = 0; i < vconf->mac_list_len; i++)
+			blobmsg_add_string(&b, NULL, (char*)vconf->mac_list[i]);
+		blobmsg_close_array(&b, a);
+	}
+
+	blobmsg_add_bool(&b, "wpa_disable_eapol_key_retries", 1);
+	blobmsg_add_u32(&b, "channel", rconf->channel);
+
+	if (vif_config_security_set(&b, vconf))
+		return -1;
+
+	if (changed->custom_options)
+		vif_config_custom_opt_set(&b, &del, vconf);
+
+	rrm_config_vif(&b, &del, rconf->freq_band, vconf->if_name);
+
+	blob_to_uci_section(uci, "wireless", vconf->if_name, "wifi-iface",
+			    b.head, &wifi_iface_param, del.head);
+
+	if (vid)
+		vlan_add((char *)vconf->if_name, vid, !strcmp(vconf->bridge, "wan"));
+	else
+		vlan_del((char *)vconf->if_name);
+
+	uci_commit_all(uci);
+
+	if (!strcmp(vconf->mode, "wds-sta")) 
+		vif_backup_wds_sta_config(&b);
+	return 0;
+}
+#endif
+
 bool target_vif_config_set2(const struct schema_Wifi_VIF_Config *vconf,
 			const struct schema_Wifi_Radio_Config *rconf,
 			const struct schema_Wifi_Credential_Config *cconfs,
 			const struct schema_Wifi_VIF_Config_flags *changed,
 			int num_cconfs)
 {
-	int rc;
 	if (!strcmp(vconf->mode, "mesh")) {
-		rc = mesh_vif_config_set(rconf, vconf, changed);
-	} else {
-		rc = ap_vif_config_set(rconf, vconf, changed);
+		(void) mesh_vif_config_set(rconf, vconf, changed);
+	} else if ((!strcmp(vconf->mode, "wds-ap")) || (!strcmp(vconf->mode, "wds-sta"))) {
+                (void) wds_vif_config_set(rconf, vconf, changed);
+        } else {
+		(void) ap_vif_config_set(rconf, vconf, changed);
 	}
 
 	return true;

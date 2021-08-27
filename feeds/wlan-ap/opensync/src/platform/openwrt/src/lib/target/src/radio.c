@@ -72,7 +72,7 @@ enum {
 static const struct blobmsg_policy wifi_device_policy[__WDEV_ATTR_MAX] = {
 	[WDEV_ATTR_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[WDEV_ATTR_DISABLED] = { .name = "disabled", .type = BLOBMSG_TYPE_BOOL },
-	[WDEV_ATTR_CHANNEL] = { .name = "channel", .type = BLOBMSG_TYPE_INT32 },
+	[WDEV_ATTR_CHANNEL] = { .name = "channel", .type = BLOBMSG_TYPE_STRING },
 	[WDEV_ATTR_TXPOWER] = { .name = "txpower", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_BEACON_INT] = { .name = "beacon_int", .type = BLOBMSG_TYPE_INT32 },
 	[WDEV_ATTR_HTMODE] = { .name = "htmode", .type = BLOBMSG_TYPE_STRING },
@@ -325,11 +325,14 @@ static bool radio_state_update(struct uci_section *s, struct schema_Wifi_Radio_C
 	update_channel_max_power(phy, &rstate);
 
 	if (tb[WDEV_ATTR_CHANNEL]) {
+		if (strcmp(blobmsg_get_string(tb[WDEV_ATTR_CHANNEL]),"auto")) {
+			SCHEMA_SET_STR(rstate.channel_mode, "auto");
+		} else {
+                        SCHEMA_SET_INT(rstate.channel, strtoul(blobmsg_get_string(tb[WDEV_ATTR_CHANNEL]),NULL,10));
+		}
 		nl80211_channel_get(phy, &chan);
 		if(chan)
 			SCHEMA_SET_INT(rstate.channel, chan);
-		else
-			SCHEMA_SET_INT(rstate.channel, blobmsg_get_u32(tb[WDEV_ATTR_CHANNEL]));
 	}
 
 	SCHEMA_SET_INT(rstate.enabled, 1);
@@ -451,7 +454,10 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 	strncpy(ifname, rconf->if_name, sizeof(ifname));
 	strncpy(phy, target_map_ifname(ifname), sizeof(phy));
 
-	if (changed->channel && rconf->channel) {
+	if (!strcmp(rconf->channel_mode, "auto")) {
+		if (changed->channel_mode)
+			blobmsg_add_string(&b, "channel", "auto");
+	} else if ((changed->channel && rconf->channel) || (changed->channel_mode)) {
 		blobmsg_add_u32(&b, "channel", rconf->channel);
 		rrm_radio_rebalance_channel(rconf);
 	}
@@ -548,13 +554,13 @@ bool target_radio_config_set2(const struct schema_Wifi_Radio_Config *rconf,
 			blobmsg_add_u32(&b, "chanbw", 20);
 			radio_fixup_set_hw_mode(rconf->if_name, m->hwmode);
 		} else
-			 LOGE("%s: failed to set ht/hwmode", rconf->if_name);
+			 LOGE("%s: failed to set ht/hwmode %s %d/%d %s/%s", rconf->if_name, rconf->freq_band, rconf->channel, channel_freq, rconf->ht_mode, hw_mode);
 	}
 
 	struct blob_attr *n;
 	int backup_channel = 0;
 	backup_channel = rrm_get_backup_channel(rconf->freq_band);
-	if(backup_channel) {
+	if ((backup_channel) && strcmp(rconf->channel_mode,"auto")) {
 		n = blobmsg_open_array(&b, "channels");
 		blobmsg_add_u32(&b, NULL, backup_channel);
 		blobmsg_close_array(&b, n);
@@ -578,6 +584,9 @@ static void periodic_task(void *arg)
 {
 	int ret = 0;
 	struct uci_element *e = NULL, *tmp = NULL;
+
+	vif_test_wds_sta_config();
+
 	if (startup_time.tv_sec) {
 		static struct timespec current_time;
 
@@ -1251,6 +1260,7 @@ bool target_radio_init(const struct target_radio_ops *ops)
 	radio_nl80211_init();
 	radio_ubus_init();
 	apc_init();
+	vif_wds_init();
 
 	clock_gettime(CLOCK_MONOTONIC, &startup_time);
 

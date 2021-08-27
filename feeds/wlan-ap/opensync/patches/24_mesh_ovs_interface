@@ -1,11 +1,12 @@
 --- a/src/lib/schema/inc/schema_consts.h
 +++ b/src/lib/schema/inc/schema_consts.h
-@@ -170,4 +170,10 @@ typedef enum {
+@@ -170,4 +170,11 @@ typedef enum {
  #define SCHEMA_CONSTS_RADIUS_IP                    "radius_server_ip"
  #define SCHEMA_CONSTS_RADIUS_SECRET                "radius_server_secret"
  #define SCHEMA_CONSTS_RADIUS_AUTH_TYPE             "radius_auth_type"
 +
 +/* Mesh options */
++#define SCHEMA_CONSTS_STP                  "stp"
 +#define SCHEMA_CONSTS_MESH_MCAST_FANOUT    "multicast_fanout"
 +#define SCHEMA_CONSTS_MESH_HOP_PENALTY     "hop_penalty"
 +#define SCHEMA_CONSTS_MESH_MCAST_RATE      "mcast_rate"
@@ -85,17 +86,19 @@
          }
        },
        "isRoot": true,
-@@ -1840,7 +1871,8 @@
+@@ -1843,7 +1874,10 @@
                    "ap",
                    "ap_vlan",
                    "monitor",
 -                  "sta"
 +                  "sta",
-+                  "mesh"
++                  "mesh",
++                  "wds-ap",
++                  "wds-sta"
                  ]
                ]
              },
-@@ -2154,6 +2186,20 @@
+@@ -2157,6 +2191,20 @@
              "min": 0,
              "max": "unlimited"
            }
@@ -116,17 +119,19 @@
          }
        },
        "isRoot": true,
-@@ -2198,7 +2244,8 @@
+@@ -2201,7 +2249,10 @@
                    "ap",
                    "ap_vlan",
                    "monitor",
 -                  "sta"
 +                  "sta",
-+                  "mesh"
++                  "mesh",
++                  "wds-ap",
++                  "wds-sta"
                  ]
                ]
              },
-@@ -2541,6 +2588,20 @@
+@@ -2544,6 +2595,20 @@
              "min": 0,
              "max": "unlimited"
            }
