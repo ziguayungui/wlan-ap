@@ -1,0 +1,14 @@
+--- a/command/cmd_rtty.uc
++++ b/command/cmd_rtty.uc
+@@ -17,6 +17,11 @@
+ 	cursor.set("rtty", "@rtty[-1]", "token", args.token);
+ 	cursor.set("rtty", "@rtty[-1]", "timeout", args.timeout);
+ 	cursor.set("rtty", "@rtty[-1]", "ssl", 1);
++	if (args.mTLS) {
++		cursor.set("rtty", "@rtty[-1]", "cacert", "/etc/ucentral/cas.pem");
++		cursor.set("rtty", "@rtty[-1]", "cert", "/etc/ucentral/cert.pem");
++		cursor.set("rtty", "@rtty[-1]", "key", "/etc/ucentral/key.pem");
++	}
+ 	cursor.commit();
+ 
+ 	system("/etc/init.d/rtty restart");

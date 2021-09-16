@@ -1,10 +1,8 @@
-Index: rtty-7.1.4/src/main.c
-===================================================================
---- rtty-7.1.4.orig/src/main.c
-+++ rtty-7.1.4/src/main.c
-@@ -37,6 +37,9 @@ enum {
-     LONG_OPT_HELP = 1
- };
+--- a/src/main.c
++++ b/src/main.c
+@@ -50,6 +50,9 @@ static void load_default_ca_cert(struct
+ }
+ #endif
  
 +int force_exit = 0;
 +int connected = 0;
@@ -12,42 +10,35 @@ Index: rtty-7.1.4/src/main.c
  static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
  {
      if (w->signum == SIGINT) {
-@@ -53,6 +56,7 @@ static struct option long_options[] = {
-     {"token",       required_argument, NULL, 't'},
+@@ -72,6 +75,7 @@ static struct option long_options[] = {
+ #endif
      {"verbose",     no_argument,       NULL, 'v'},
      {"version",     no_argument,       NULL, 'V'},
 +    {"exit",        required_argument, NULL, 'e'},
      {"help",        no_argument,       NULL, LONG_OPT_HELP},
      {0, 0, 0, 0}
  };
-@@ -79,10 +83,17 @@ static void usage(const char *prog)
+@@ -104,11 +108,18 @@ static void usage(const char *prog)
      exit(1);
  }
  
 +static void timeout_cb(EV_P_ ev_timer *w, int revents)
 +{
 +    if (!connected)
-+	    exit(1);
++           exit(1);
 +}
 +
  int main(int argc, char **argv)
  {
+-    char shortopts[32] = "I:h:p:d:aDt:f:RS:vV";
++    char shortopts[32] = "I:h:p:d:aDt:f:RS:vVe:";
      struct ev_loop *loop = EV_DEFAULT;
      struct ev_signal signal_watcher;
 +    struct ev_timer timeout_watcher;
      bool background = false;
      bool verbose = false;
      struct rtty rtty = {
-@@ -95,7 +106,7 @@ int main(int argc, char **argv)
-     int c;
- 
-     while (true) {
--        c = getopt_long(argc, argv, "I:h:p:d:asDt:f:RS:vV", long_options, &option_index);
-+        c = getopt_long(argc, argv, "I:h:p:d:asDt:f:RS:vVe:", long_options, &option_index);
-         if (c == -1)
-             break;
- 
-@@ -146,6 +157,9 @@ int main(int argc, char **argv)
+@@ -208,6 +219,9 @@ int main(int argc, char **argv)
          case LONG_OPT_HELP:
              usage(argv[0]);
              break;
@@ -57,7 +48,7 @@ Index: rtty-7.1.4/src/main.c
          default: /* '?' */
              usage(argv[0]);
              break;
-@@ -167,6 +181,10 @@ int main(int argc, char **argv)
+@@ -231,6 +245,10 @@ int main(int argc, char **argv)
  
      ev_signal_init(&signal_watcher, signal_cb, SIGINT);
      ev_signal_start(loop, &signal_watcher);
@@ -66,15 +57,13 @@ Index: rtty-7.1.4/src/main.c
 +        ev_timer_start(loop, &timeout_watcher);
 +    }
  
-     if (rtty_start(&rtty) < 0)
-         return -1;
-Index: rtty-7.1.4/src/rtty.c
-===================================================================
---- rtty-7.1.4.orig/src/rtty.c
-+++ rtty-7.1.4/src/rtty.c
-@@ -36,6 +36,9 @@
- #include "utils.h"
+ #ifdef SSL_SUPPORT
+     if (rtty.ssl_ctx && !has_cacert)
+--- a/src/rtty.c
++++ b/src/rtty.c
+@@ -37,6 +37,9 @@
  #include "command.h"
+ #include "log/log.h"
  
 +extern int force_exit;
 +extern int connected;
@@ -82,7 +71,7 @@ Index: rtty-7.1.4/src/rtty.c
  static char login_path[128];       /* /bin/login */
  
  static void del_tty(struct tty *tty)
-@@ -57,6 +60,8 @@ static void del_tty(struct tty *tty)
+@@ -61,6 +64,8 @@ static void del_tty(struct tty *tty)
      log_info("delete tty: %d\n", tty->sid);
  
      free(tty);
@@ -91,7 +80,7 @@ Index: rtty-7.1.4/src/rtty.c
  }
  
  static inline struct tty *find_tty(struct rtty *rtty, int sid)
-@@ -69,6 +74,7 @@ static inline struct tty *find_tty(struc
+@@ -73,6 +78,7 @@ static inline struct tty *find_tty(struc
  static inline void tty_logout(struct rtty *rtty, int sid)
  {
      struct tty *tty = find_tty(rtty, sid);
@@ -99,7 +88,7 @@ Index: rtty-7.1.4/src/rtty.c
      if (tty)
          del_tty(tty);
  }
-@@ -136,6 +142,8 @@ static void pty_on_exit(struct ev_loop *
+@@ -142,6 +148,8 @@ static void pty_on_exit(struct ev_loop *
      ev_io_start(loop, &rtty->iow);
  
      del_tty(tty);
@@ -107,12 +96,12 @@ Index: rtty-7.1.4/src/rtty.c
 +	    exit(0);
  }
  
- static void tty_login(struct rtty *rtty)
-@@ -188,6 +196,7 @@ static void tty_login(struct rtty *rtty)
+ static void tty_timer_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+@@ -217,6 +225,7 @@ static void tty_login(struct rtty *rtty)
      buffer_put_u8(&rtty->wb, sid);
      ev_io_start(rtty->loop, &rtty->iow);
  
 +    connected = 1;
      log_info("new tty: %d\n", sid);
- }
  
+     return;

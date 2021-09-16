@@ -13,6 +13,9 @@ validate_rtty_section() {
 		'host:host' \
 		'port:port' \
 		'ssl:bool:0' \
+		'cacert:maxlength(126)' \
+		'cert:maxlength(126)' \
+		'key:maxlength(126)' \
 		'token:maxlength(32)' \
 		'verbose:bool:0' \
 		'enable:bool:0' \
@@ -52,6 +55,9 @@ start_rtty() {
 	[ -n "$port" ] && procd_append_param command -p "$port"
 	[ -n "$description" ] && procd_append_param command -d "$description"
 	[ "$ssl" = "1" ] && procd_append_param command -s
+	[ -n "$cacert" ] && procd_append_param command -C "$cacert"
+	[ -n "$cert" ] && procd_append_param command -c "$cert"
+	[ -n "$key" ] && procd_append_param command -k "$key"
 	[ -n "$token" ] && procd_append_param command -t "$token"
 	[ "$verbose" = "1" ] && procd_append_param command -v
 	[ "$timeout" -eq "0" ] || procd_append_param command -e $timeout
