@@ -83,6 +83,7 @@ packages:
   - logrotate
   - kmod-ledtrig-heartbeat
   - bind-dig
+  - ethtool
 
 diffconfig: |
   CONFIG_OPENSSL_ENGINE=y
