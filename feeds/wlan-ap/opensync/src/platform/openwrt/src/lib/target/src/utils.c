@@ -376,10 +376,25 @@ int phy_get_channels_state(const char *name, struct schema_Wifi_Radio_State *rst
 	return ret;
 }
 
+static void get_available_radios_count(char *freq_band, char *current_band)
+{
+	glob_t gl;
+	if (glob("/sys/class/ieee80211/*", GLOB_NOSORT, NULL, &gl))
+		return;
+	if(gl.gl_pathc == 2) {
+		strcpy(freq_band, "5G");
+		return;
+	}
+	else {
+		strcpy(freq_band, current_band);
+		return;
+	}
+}
+
 int phy_get_band(const char *name, char *band)
 {
 	struct wifi_phy *phy = phy_find(name);
-
+	char freq_band[8];
 	*band = '\0';
 
 	if (!phy)
@@ -389,10 +404,14 @@ int phy_get_band(const char *name, char *band)
 		sprintf(band, "2.4G");
 	else if (phy->band_5gl && phy->band_5gu)
 		sprintf(band, "5G");
-	else if (phy->band_5gl)
-		sprintf(band, "5GL");
-	else if (phy->band_5gu)
-		sprintf(band, "5GU");
+	else if (phy->band_5gl) {
+		get_available_radios_count(freq_band, "5GL");
+		sprintf(band, "%s", freq_band);
+	}
+	else if (phy->band_5gu) {
+		get_available_radios_count(freq_band, "5GU");
+		sprintf(band, "%s", freq_band);
+	}
 	else
 		return -1;
 	return 0;
