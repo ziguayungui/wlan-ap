@@ -634,7 +634,7 @@ __adpt_hppe_uniphy_psgmii_mode_set(a_uint32_t dev_id, a_uint32_t uniphy_index)
 		phy_type = hsl_port_phyid_get(dev_id,
 				SSDK_PHYSICAL_PORT3);
 		if (phy_type == MALIBU2PORT_PHY) {
-			SSDK_INFO("cypress uniphy %d is qca8072 psgmii mode\n", uniphy_index);
+			SSDK_INFO("cypress uniphy %d is qca8072/qca8075 psgmii mode\n", uniphy_index);
 			rv = __adpt_cppe_uniphy_mode_set(dev_id, uniphy_index,
 				PORT_WRAPPER_PSGMII);
 			return rv;
