@@ -608,6 +608,9 @@ hsl_port_phyid_get(a_uint32_t dev_id, fal_port_t port_id)
 		return INVALID_PHY_ID;
 	}
 
+	if (phy_id == MALIBU5PORT_PHY)
+		phy_id = MALIBU2PORT_PHY;
+
 	return phy_id;
 }
 
