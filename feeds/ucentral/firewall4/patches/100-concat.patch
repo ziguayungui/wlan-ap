@@ -1,0 +1,13 @@
+Index: firewall4-2021-09-01-cf835cec/root/usr/share/firewall4/templates/rule.uc
+===================================================================
+--- firewall4-2021-09-01-cf835cec.orig/root/usr/share/firewall4/templates/rule.uc
++++ firewall4-2021-09-01-cf835cec/root/usr/share/firewall4/templates/rule.uc
+@@ -28,7 +28,7 @@
+ 	{{ (rule.family == 4) ? "icmp" : "icmpv6" }} type {{ fw4.set(rule.icmp_types) }} {%+ endif -%}
+ {%+ if (rule.icmp_codes): -%}
+ 	{{ (rule.family == 4) ? "icmp" : "icmpv6" }} type . {{ (rule.family == 4) ? "icmp" : "icmpv6" }} code {{
+-		fw4.set(rule.icmp_codes)
++		fw4.set(rule.icmp_codes, true)
+ 	}} {%+ endif -%}
+ {%+ if (rule.helper): -%}
+ 	ct helper{% if (rule.helper.invert): %} !={% endif %} {{ fw4.quote(rule.helper.name, true) }} {%+ endif -%}
