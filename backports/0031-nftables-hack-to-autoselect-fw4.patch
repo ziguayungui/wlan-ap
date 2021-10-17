@@ -1,0 +1,44 @@
+From 0b115edfbf53be4884897704137960ac502c6a66 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Sun, 17 Oct 2021 11:52:11 +0200
+Subject: [PATCH 2/2] nftables: hack to autoselect fw4
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ include/netfilter.mk | 3 ++-
+ include/target.mk    | 5 +----
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/include/netfilter.mk b/include/netfilter.mk
+index cee40ee008..c84f4dd9c8 100644
+--- a/include/netfilter.mk
++++ b/include/netfilter.mk
+@@ -355,7 +355,8 @@ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_BRIDGE,CONFIG_NFT_BRIDGE_META, $(P_EBT)
+ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_BRIDGE,CONFIG_NFT_BRIDGE_REJECT, $(P_EBT)nft_reject_bridge),))
+ 
+ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_NAT, $(P_XT)nft_nat),))
+-$(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_NAT, $(P_XT)nft_chain_nat),))
++$(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_NAT, $(P_XT)nft_chain_nat, ge 5.4.0),))
++$(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_NAT, $(P_V4)nft_chain_nat_ipv4, le 4.4.0),))
+ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_REDIR_IPV4, $(P_V4)nft_redir_ipv4),))
+ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_MASQ, $(P_XT)nft_masq),))
+ $(eval $(if $(NF_KMOD),$(call nf_add,NFT_NAT,CONFIG_NFT_MASQ_IPV4, $(P_V4)nft_masq_ipv4),))
+diff --git a/include/target.mk b/include/target.mk
+index 691f8fb186..2ac4da3dd0 100644
+--- a/include/target.mk
++++ b/include/target.mk
+@@ -44,10 +44,7 @@ DEFAULT_PACKAGES.nas:=\
+ # For router targets
+ DEFAULT_PACKAGES.router:=\
+ 	dnsmasq \
+-	firewall \
+-	ip6tables \
+-	iptables \
+-	kmod-ipt-offload \
++	firewall4 \
+ 	odhcp6c \
+ 	odhcpd-ipv6only \
+ 	ppp \
+-- 
+2.25.1
+

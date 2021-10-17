@@ -1,0 +1,32 @@
+From 22139c4e2692e36bad96e794bcea61fa8a75e002 Mon Sep 17 00:00:00 2001
+From: Daniel Danzberger <daniel@dd-wrt.com>
+Date: Tue, 28 Sep 2021 11:48:50 +0200
+Subject: [PATCH] nftables: install libnftables to staging dir
+
+Makes libnftables library and headers available for other packages.
+
+Signed-off-by: Daniel Danzberger <daniel@dd-wrt.com>
+---
+ package/network/utils/nftables/Makefile | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/package/network/utils/nftables/Makefile b/package/network/utils/nftables/Makefile
+index 7830596e84..32384aca0e 100644
+--- a/package/network/utils/nftables/Makefile
++++ b/package/network/utils/nftables/Makefile
+@@ -61,6 +61,12 @@ endif
+ TARGET_CFLAGS += -flto
+ TARGET_LDFLAGS += -flto
+ 
++define Build/InstallDev
++	$(INSTALL_DIR) $(1)/usr/lib $(1)/usr/include
++	$(CP) $(PKG_INSTALL_DIR)/usr/lib/*.so* $(1)/usr/lib/
++	$(CP) $(PKG_INSTALL_DIR)/usr/include/nftables $(1)/usr/include/
++endef
++
+ define Package/nftables/install/Default
+ 	$(INSTALL_DIR) $(1)/usr/sbin
+ 	$(CP) $(PKG_INSTALL_DIR)/usr/sbin/nft $(1)/usr/sbin/
+-- 
+2.25.1
+

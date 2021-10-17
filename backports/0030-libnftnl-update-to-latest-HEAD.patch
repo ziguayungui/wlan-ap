@@ -1,0 +1,33 @@
+From c185ac1035c6b4aa17353938fce6b27231007121 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Sun, 17 Oct 2021 11:51:38 +0200
+Subject: [PATCH 1/2] libnftnl: update to latest HEAD
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ package/libs/libnftnl/Makefile | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/package/libs/libnftnl/Makefile b/package/libs/libnftnl/Makefile
+index 198e01ba22..4c7f6ad465 100644
+--- a/package/libs/libnftnl/Makefile
++++ b/package/libs/libnftnl/Makefile
+@@ -8,12 +8,12 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=libnftnl
+-PKG_VERSION:=1.1.8
+-PKG_RELEASE:=1
++PKG_VERSION:=1.2.0
++PKG_RELEASE:=$(AUTORELEASE)
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
+ PKG_SOURCE_URL:=https://netfilter.org/projects/$(PKG_NAME)/files
+-PKG_HASH:=04a3fa5b08b736268f7e65836b9f05d9d5f438181467bee3c76c3c4a4f3ab711
++PKG_HASH:=90b01fddfe9be8c3245c3ba5ff5a4424a8df708828f92b2b361976b658c074f5
+ 
+ PKG_MAINTAINER:=Steven Barth <steven@midlink.org>
+ PKG_LICENSE:=GPL-2.0-or-later
+-- 
+2.25.1
+
