@@ -7,12 +7,12 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=opennds
 PKG_FIXUP:=autoreconf
-PKG_VERSION:=9.0.0
+PKG_VERSION:=9.4.0
 PKG_RELEASE:=1
 
 PKG_SOURCE_URL:=https://codeload.github.com/opennds/opennds/tar.gz/v$(PKG_VERSION)?
 PKG_SOURCE:=opennds-$(PKG_VERSION).tar.gz
-PKG_HASH:=466dbd78a9464d56f6bf8c8374071e4c21854700a8176a47e72e23930e4271b2
+PKG_HASH:=fc2fa2e810ade5b281885f6ca3c2bb7ceb8d87176f2072e8ef9d75aa816e21e9
 PKG_BUILD_DIR:=$(BUILD_DIR)/openNDS-$(PKG_VERSION)
 
 PKG_MAINTAINER:=Rob White <rob@blue-wave.net>
@@ -25,7 +25,9 @@ define Package/opennds
 	SUBMENU:=Captive Portals
 	SECTION:=net
 	CATEGORY:=Network
-	DEPENDS:=+libpthread +iptables-mod-ipopt +libmicrohttpd-no-ssl
+	DEPENDS:=+libpthread +libmicrohttpd-no-ssl \
+		+OPENNDS_NFTABLES:nftables \
+		+!OPENNDS_NFTABLES:iptables-mod-ipopt
 	TITLE:=Open public network gateway daemon
 	URL:=https://github.com/opennds/opennds
 	CONFLICTS:=nodogsplash nodogsplash2
@@ -39,6 +41,17 @@ define Package/opennds/description
 	The creation of sophisticated third party authentication applications is fully supported.
 	Internet hosted https portals can be utilised to inspire maximum user confidence.
 endef
+
+define Package/opennds/config
+config OPENNDS_NFTABLES
+	bool "Use nftables as firewall backend"
+	depends on LINUX_5_4 || LINUX_5_10
+	default y
+endef
+
+ifeq ($(CONFIG_OPENNDS_NFTABLES),y)
+	MAKE_VARS += FW_NFTABLES=1
+endif
 
 define Package/opennds/install
 	$(INSTALL_DIR) $(1)/usr/bin
