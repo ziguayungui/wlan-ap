@@ -6,3 +6,8 @@ feeds:
 packages:
   - wireless-regdb
   - kmod-sched-cake
+  - iptables
+  - ip6tables
+  - firewall
+diffconfig: |
+   # CONFIG_PACKAGE_firewall4 is not set
