@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, 2021, The Linux Foundation. All rights reserved.
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
@@ -1191,6 +1191,8 @@ struct cmd_des_t gcmd_des[] =
 			{"aclentry", "set", "Set acl policer entry", "<index>", SW_API_POLICER_ACL_ENTRY_SET, NULL},
 			{"aclentry", "get", "Get acl policer entry", "<index>", SW_API_POLICER_ACL_ENTRY_GET, NULL},
 			{"globalcounter", "get", "Get policer global counter", "", SW_API_POLICER_GLOBAL_COUNTER_GET, NULL},
+			{"bypass", "set", "Set policer bypass drop packet", "<frame_type> <enable>", SW_API_POLICER_BYPASS_EN_SET, NULL},
+			{"bypass", "get", "Get policer bypass drop packet", "<frame_type>", SW_API_POLICER_BYPASS_EN_GET, NULL},
 			{NULL, NULL, NULL, NULL, SW_API_INVALID, NULL}/*end of desc*/
 		},
 	},

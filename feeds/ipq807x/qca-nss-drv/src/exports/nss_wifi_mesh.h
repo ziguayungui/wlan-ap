@@ -210,6 +210,8 @@ enum nss_wifi_mesh_error_types {
 	NSS_WIFI_MESH_ERROR_DISABLE_INTERFACE_FAIL,			/**< Wi-Fi mesh disabling interface failures. */
 	NSS_WIFI_MESH_ERROR_INVALID_EXCEPTION_NUM,			/**< Wi-Fi mesh invalid exception number. */
 	NSS_WIFI_MESH_ERROR_ONESHOT_ALREADY_ATTACHED,			/**< Wi-Fi mesh oneshot already attached error. */
+	NSS_WIFI_MESH_ERROR_DUMMY_PATH_ADD_FAILED,			/**< Wi-Fi mesh dummy path add failed error. */
+	NSS_WIFI_MESH_ERROR_DUMMY_PROXY_PATH_ADD_FAILED,		/**< Wi-Fi mesh dummy proxy path add failed error. */
 };
 
 /**
@@ -230,7 +232,8 @@ enum nss_wifi_mesh_configurable_exceptions {
 	NSS_WIFI_MESH_DS_MESH_PATH_NOT_FOUND = 1,		/**< Downstream (Eth - Wi-Fi) mesh path not found exception. */
 	NSS_WIFI_MESH_US_MESH_PROXY_NOT_FOUND = 2,		/**< Upstream (Wi-Fi - Eth) mesh proxy path not found exception. */
 	NSS_WIFI_MESH_US_MESH_PATH_NOT_FOUND = 3,		/**< Upstream (Wi-Fi - Eth) mesh path not found exception. */
-	NSS_WIFI_MESH_EXCEPTION_MAX = 4
+	NSS_WIFI_MESH_DS_MESH_PATH_EXPIRY = 4,			/**< Downstream (Eth - Wi-Fi) mesh path expiry notifications. */
+	NSS_WIFI_MESH_EXCEPTION_MAX = 5
 };
 
 /*
@@ -407,6 +410,7 @@ struct nss_wifi_mesh_encap_stats {
 	uint32_t no_headroom;			/* Number of packets dropped because there is no headroom. */
 	uint32_t path_refresh_sent;		/* Number of times path refresh is sent to host. */
 	uint32_t linearise_failed;		/* Number of packets dropped because pb_linearise. */
+	uint32_t mp_exception_event_rl_dropped;	/* Number of packets dropped due to rate limit. */
 };
 
 /*
@@ -519,6 +523,8 @@ struct nss_wifi_mesh_path_stats {
 	uint32_t metric_updations;			/**< Mesh path metric updations. */
 	uint32_t block_mesh_fwd_updations;		/**< Mesh path block mesh forward updations. */
 	uint32_t delete_failures;			/**< Mesh path delete failures. */
+	uint32_t mesh_path_dummy_add_failures;		/**< Mesh path dummy entry add failures. */
+	uint32_t mesh_path_dummy_add_success;		/**< Mesh path dummy entry add successes. */
 };
 
 /**
@@ -542,6 +548,10 @@ struct nss_wifi_mesh_proxy_path_stats {
 	uint32_t update_requests;		/**< Mesh proxy path updation requests. */
 	uint32_t mda_updations;			/**< Mesh proxy path mda updations. */
 	uint32_t flag_updations;		/**< Mesh proxy path flags updations. */
+	uint32_t mesh_proxy_path_dummy_lookup_success;	/**< Mesh proxy path dummy entry lookup successes. */
+	uint32_t mesh_proxy_path_dummy_lookup_failures;	/**< Mesh proxy path dummy entry lookup failures. */
+	uint32_t mesh_proxy_path_dummy_add_failures;	/**< Mesh proxy path dummy entry add failures. */
+	uint32_t mesh_proxy_path_dummy_add_success;	/**< Mesh proxy path dummy entry add successes. */
 };
 
 /**
@@ -672,6 +682,7 @@ enum nss_wifi_mesh_encap_stats_type {
 	NSS_WIFI_MESH_ENCAP_STATS_TYPE_NO_HEADROOM,			/**< Wi-Fi mesh encapsulation statistics no headroom. */
 	NSS_WIFI_MESH_ENCAP_STATS_TYPE_PATH_REFRESH_SENT,		/**< Wi-Fi mesh encapsulation statistics path refresh sent. */
 	NSS_WIFI_MESH_ENCAP_STATS_TYPE_LINEARISE_FAILED,		/**< Wi-Fi mesh encapsulation statistics when linearisation failed. */
+	NSS_WIFI_MESH_ENCAP_STATS_TYPE_MP_EXC_RL_DROPPED,		/**< Wi-Fi mesh encapsulation statistics when packet is dropped due to rate limiting. */
 	NSS_WIFI_MESH_ENCAP_STATS_TYPE_MAX				/**< Wi-Fi mesh encapsulation statistics maximum. */
 };
 
@@ -735,6 +746,8 @@ enum nss_wifi_mesh_path_stats_type {
 	NSS_WIFI_MESH_PATH_STATS_TYPE_METRIC_UPDATIONS,			/**< Wi-Fi mesh path statistics metric updations. */
 	NSS_WIFI_MESH_PATH_STATS_TYPE_BLOCK_MESH_FWD_UPDATIONS,		/**< Wi-Fi mesh path statistics block mesh forward updations. */
 	NSS_WIFI_MESH_PATH_STATS_TYPE_MESH_PATH_DELETE_FAILURES,	/**< Wi-Fi mesh path statistics mesh path delete failures. */
+	NSS_WIFI_MESH_PATH_STATS_TYPE_MESH_PATH_DUMMY_ADD_FAILURES,	/**< Wi-Fi mesh path statistics mesh path dummy add failures. */
+	NSS_WIFI_MESH_PATH_STATS_TYPE_MESH_PATH_DUMMY_ADD_SUCCESS,	/**< Wi-Fi mesh path statistics mesh path dummy add success. */
 	NSS_WIFI_MESH_PATH_STATS_TYPE_MAX				/**< Wi-Fi mesh path statistics maximum. */
 };
 
@@ -759,6 +772,10 @@ enum nss_wifi_mesh_proxy_path_stats_type {
 	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_UPDATE_REQUESTS,		/**< Wi-Fi mesh proxy path statistics update request. */
 	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_MDA_UPDATIONS,		/**< Wi-Fi mesh proxy path statistics mda updations. */
 	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_FLAGS_UPDATIONS,		/**< Wi-Fi mesh proxy path statistics flags updations. */
+	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_DUMMY_LOOKUP_SUCCESS,	/**< Wi-Fi mesh proxy path statistics dummy lookup success. */
+	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_DUMMY_LOOKUP_FAILURES,	/**< Wi-Fi mesh proxy path statistics dummy lookup failures. */
+	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_DUMMY_ADD_FAILURES,		/**< Wi-Fi mesh proxy path statistics dummy add failures. */
+	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_DUMMY_ADD_SUCCESS,		/**< Wi-Fi mesh proxy path statistics dummy add success. */
 	NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_MAX				/**< Wi-Fi mesh proxy path statistics maximum. */
 };
 

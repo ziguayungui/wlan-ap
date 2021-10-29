@@ -92,6 +92,7 @@ enum nss_wifi_metadata_types {
 	NSS_WIFI_OL_PEER_TIME_MSG,
 	NSS_WIFI_PEER_SET_VLAN_ID_MSG,
 	NSS_WIFI_PEER_ISOLATION_MSG,
+	NSS_WIFI_PEER_AUTH_MSG,
 	NSS_WIFI_MAX_MSG
 };
 
@@ -634,6 +635,11 @@ struct nss_wifi_stats_sync_msg {
 	 * Number of times a deny list was hit during multicast enhancement.
 	 */
 	uint32_t mc_enhance_denylist_hit;
+
+	/**
+	 * Total number of data packets dropped for an unauthorized peer.
+	 */
+	uint32_t peer_unauth_rx_pkt_drop;
 };
 
 /**
@@ -641,8 +647,8 @@ struct nss_wifi_stats_sync_msg {
  *	Information for creating a Wi-Fi peer freelist.
  */
 struct nss_wifi_peer_freelist_append_msg {
-	uint32_t addr;		/**< Starting address of peer freelist pool. */
-	uint32_t length;	/**< Size of peer freelist pool. */
+	uint32_t addr;		/**< Starting address of the peer freelist pool. */
+	uint32_t length;	/**< Size of the peer freelist pool. */
 	uint32_t num_peers;	/**< Maximum peer entries supported in the pool. */
 };
 
@@ -709,7 +715,7 @@ struct nss_wifi_peer_ol_stats {
 	uint32_t tx_mcast;	/**< Number of multicast packets sent. */
 	uint32_t tx_ucast;	/**< Number of unicast packets sent. */
 	uint32_t tx_data;	/**< Number data packets sent. */
-	uint32_t tx_bytes;	/**< Number of bytes sent. */
+	uint32_t tx_bytes;	/**< Number of bytes transmitted. */
 	uint32_t tx_fail;	/**< Number of failed Tx packets. */
 	uint32_t thrup_bytes;	/**< Number of throughput bytes. */
 	uint32_t tx_bcast_pkts;	/**< Number of broadcast packets sent. */
@@ -742,7 +748,7 @@ struct nss_wifi_ol_stats_msg {
 
 /**
  * nss_wifi_sta_kickout_msg
- *	Station kickout message from NSS Firmware
+ *	Station kickout message from NSS firmware.
  */
 struct nss_wifi_sta_kickout_msg {
 	uint32_t peer_id;	/**< Peer ID. */
@@ -757,9 +763,18 @@ struct nss_wifi_peer_isolation_msg {
 	uint16_t isolation;	/**< Isolation enabled/disabled. */
 };
 
+/*
+ * nss_wifi_peer_auth_msg
+ *	Peer authentication flag status.
+ */
+struct nss_wifi_peer_auth_msg {
+	uint16_t peer_id;	/**< Peer ID. */
+	uint16_t auth_flag;	/**< Peer authentication flag. */
+};
+
 /**
  * nss_wifi_wnm_peer_rx_activity_msg
- *	Rx active state information for the peer.
+ *	Receive active state information for the peer.
  */
 struct nss_wifi_wnm_peer_rx_activity_msg {
 	uint16_t nentries;	/**< Number of entries. */
@@ -917,17 +932,19 @@ struct nss_wifi_msg {
 		struct nss_wifi_cmd_msg wcmdm;
 				/**< Pdev command information. */
 		struct nss_wifi_enable_ol_statsv2 wesh_msg;
-				/**< Enable version 2 tx/rx stats. */
+				/**< Enable version 2 transmit/receive statistics. */
 		struct nss_wifi_ol_peer_time_msg wopt_msg;
 				/**< Send per peer/TID timestamp statistics to host. */
 		struct nss_wifi_peer_isolation_msg isolation_msg;
 				/**< Enable or disable peer isolation. */
+		struct nss_wifi_peer_auth_msg auth_msg;
+				/**< Enable or disable peer authorization. */
 	} msg; /**< Message Payload. */
 };
 
 /**
  * nss_wifi_get_context
- *	Gets the Wi-Fi context used in nss_gre_tx.
+ *	Gets the Wi-Fi context used in NSS GRE transmit.
  *
  * @return
  * Pointer to the NSS core context.

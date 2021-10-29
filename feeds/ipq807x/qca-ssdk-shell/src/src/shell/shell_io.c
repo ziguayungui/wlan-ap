@@ -22243,14 +22243,16 @@ cmd_data_check_global_qinqmode(char *info, void *val, a_uint32_t size)
         }
         else if (!strncasecmp(cmd, "help", 4))
         {
-            dprintf("usage: <bit 0 for ingress and bit 1 for egress>\n");
+            dprintf("usage: <bit 0 for ingress and bit 1 for egress, \
+			    bit 2 for untouched with cpu code>\n");
             rv = SW_BAD_VALUE;
         }
         else
         {
             rv = cmd_data_check_uint32(cmd, &(pEntry->mask), sizeof(a_uint32_t));
             if (SW_OK != rv)
-                dprintf("usage: <bit 0 for ingress and bit 1 for egress>\n");
+                dprintf("usage: <bit 0 for ingress and bit 1 for egress, \
+				bit 2 for untouched with cpu code>\n");
         }
     }while (talk_mode && (SW_OK != rv));
 
@@ -22300,6 +22302,24 @@ cmd_data_check_global_qinqmode(char *info, void *val, a_uint32_t size)
         }
     }while (talk_mode && (SW_OK != rv));
 
+    /* get untouched with cpu code */
+    do {
+	    cmd = get_sub_cmd("untouched_for_cpucode", "enable");
+	    SW_RTN_ON_NULL_PARAM(cmd);
+
+	    if (!strncasecmp(cmd, "quit", 4)) {
+		    return SW_BAD_VALUE;
+	    } else if (!strncasecmp(cmd, "help", 4)) {
+		    dprintf("usage: <enable/disable>\n");
+		    rv = SW_BAD_VALUE;
+	    } else {
+		    rv = cmd_data_check_enable(cmd, &(pEntry->untouched_for_cpucode),
+				    sizeof(a_bool_t));
+		    if (SW_OK != rv)
+			    dprintf("usage: <enable/disable>\n");
+	    }
+    } while (talk_mode && (SW_OK != rv));
+
     return SW_OK;
 }
 
@@ -22319,6 +22339,8 @@ cmd_data_print_global_qinqmode(a_uint8_t * param_name, a_uint32_t * buf, a_uint3
     cmd_data_print_qinq_mode("egress_qinq_mode",
 				(a_uint32_t *) & (entry->egress_mode),
 				sizeof(a_uint32_t));
+    cmd_data_print_enable("untouched_for_cpucode", &entry->untouched_for_cpucode,
+		    sizeof(entry->untouched_for_cpucode));
 
 }
 

@@ -45,6 +45,7 @@ static uint8_t *nss_wifi_mesh_log_message_types_str[NSS_WIFI_MESH_LOG_MESSAGE_TY
 	"WiFi Mesh configure Proxy Path Table Dump",
 	"WiFi Mesh configure Assoc Link Vap",
 	"WiFi Mesh configure Exception Message",
+	"WiFi Mesh configure Rate limit message",
 	"WiFi Mesh configure Stats Sync"
 };
 
@@ -247,6 +248,20 @@ static void nss_wifi_mesh_log_exception_flag_msg(struct nss_wifi_mesh_msg *nwmm)
 }
 
 /*
+ * nss_wifi_mesh_log_rate_limit_config()
+ *	Log a NSS Wi-Fi mesh rate limit config message.
+ */
+static void nss_wifi_mesh_log_rate_limit_config(struct nss_wifi_mesh_msg *nwmm)
+{
+	struct nss_wifi_mesh_rate_limit_config *rlcm __maybe_unused = &nwmm->msg.exc_cfg;
+	nss_trace("%px: NSS WiFi Mesh rate limit config message:\n"
+		 "exception_num : %d\n"
+		 "enable : %d\n"
+		 "rate_limit : %d\n",
+		  rlcm, rlcm->exception_num, rlcm->enable, rlcm->rate_limit);
+}
+
+/*
  * nss_wifi_mesh_log_verbose()
  *	Log message contents.
  */
@@ -308,6 +323,10 @@ static void nss_wifi_mesh_log_verbose(struct nss_wifi_mesh_msg *nwmm)
 
 	case NSS_WIFI_MESH_MSG_EXCEPTION_FLAG:
 		nss_wifi_mesh_log_exception_flag_msg(nwmm);
+		break;
+
+	case NSS_WIFI_MESH_CONFIG_EXCEPTION:
+		nss_wifi_mesh_log_rate_limit_config(nwmm);
 		break;
 
 	default:

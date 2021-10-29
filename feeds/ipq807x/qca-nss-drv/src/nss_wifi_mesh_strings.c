@@ -53,7 +53,8 @@ struct nss_stats_info nss_wifi_mesh_strings_encap_stats[NSS_WIFI_MESH_ENCAP_STAT
 	{"expiry_notify_fail",		NSS_STATS_TYPE_SPECIAL},
 	{"no_headroom", 		NSS_STATS_TYPE_SPECIAL},
 	{"path_refresh_sent", 		NSS_STATS_TYPE_SPECIAL},
-	{"linearise_failed", 		NSS_STATS_TYPE_SPECIAL}
+	{"linearise_failed", 		NSS_STATS_TYPE_SPECIAL},
+	{"mp_exc_event_rl_dropped",	NSS_STATS_TYPE_SPECIAL}
 };
 
 /*
@@ -89,7 +90,10 @@ struct nss_stats_info nss_wifi_mesh_strings_path_stats[NSS_WIFI_MESH_PATH_STATS_
 	{"flag_updations",		NSS_STATS_TYPE_SPECIAL},
 	{"metric_updations",		NSS_STATS_TYPE_SPECIAL},
 	{"block_mesh_fwd_updations",	NSS_STATS_TYPE_SPECIAL},
-	{"delete_failures",		NSS_STATS_TYPE_SPECIAL}
+	{"delete_failures",		NSS_STATS_TYPE_SPECIAL},
+	{"mesh_path_dummy_add_failures",NSS_STATS_TYPE_SPECIAL},
+	{"mesh_path_dummy_add_success",	NSS_STATS_TYPE_SPECIAL}
+
 };
 
 /*
@@ -106,22 +110,26 @@ static ssize_t nss_wifi_mesh_path_stats_strings_read(struct file *fp, char __use
  * 	Wi-Fi mesh proxy path statistics string.
  */
 struct nss_stats_info nss_wifi_mesh_strings_proxy_path_stats[NSS_WIFI_MESH_PROXY_PATH_STATS_TYPE_MAX] = {
-	{"alloc_failures",		NSS_STATS_TYPE_SPECIAL},
-	{"entry_exist_failures",	NSS_STATS_TYPE_SPECIAL},
-	{"add_success",			NSS_STATS_TYPE_SPECIAL},
-	{"table_full_errors",		NSS_STATS_TYPE_SPECIAL},
-	{"insert_failures",		NSS_STATS_TYPE_SPECIAL},
-	{"not_found",			NSS_STATS_TYPE_SPECIAL},
-	{"unhashed_errors",		NSS_STATS_TYPE_SPECIAL},
-	{"delete_failures",		NSS_STATS_TYPE_SPECIAL},
-	{"delete_success",		NSS_STATS_TYPE_SPECIAL},
-	{"update_success",		NSS_STATS_TYPE_SPECIAL},
-	{"lookup_success",		NSS_STATS_TYPE_SPECIAL},
-	{"add_requests",		NSS_STATS_TYPE_SPECIAL},
-	{"del_requests",		NSS_STATS_TYPE_SPECIAL},
-	{"update_requests",		NSS_STATS_TYPE_SPECIAL},
-	{"mda_updations",		NSS_STATS_TYPE_SPECIAL},
-	{"flag_updations",		NSS_STATS_TYPE_SPECIAL}
+	{"alloc_failures",				NSS_STATS_TYPE_SPECIAL},
+	{"entry_exist_failures",			NSS_STATS_TYPE_SPECIAL},
+	{"add_success",					NSS_STATS_TYPE_SPECIAL},
+	{"table_full_errors",				NSS_STATS_TYPE_SPECIAL},
+	{"insert_failures",				NSS_STATS_TYPE_SPECIAL},
+	{"not_found",					NSS_STATS_TYPE_SPECIAL},
+	{"unhashed_errors",				NSS_STATS_TYPE_SPECIAL},
+	{"delete_failures",				NSS_STATS_TYPE_SPECIAL},
+	{"delete_success",				NSS_STATS_TYPE_SPECIAL},
+	{"update_success",				NSS_STATS_TYPE_SPECIAL},
+	{"lookup_success",				NSS_STATS_TYPE_SPECIAL},
+	{"add_requests",				NSS_STATS_TYPE_SPECIAL},
+	{"del_requests",				NSS_STATS_TYPE_SPECIAL},
+	{"update_requests",				NSS_STATS_TYPE_SPECIAL},
+	{"mda_updations",				NSS_STATS_TYPE_SPECIAL},
+	{"flag_updations",				NSS_STATS_TYPE_SPECIAL},
+	{"mesh_proxy_path_dummy_lookup_success",	NSS_STATS_TYPE_SPECIAL},
+	{"mesh_proxy_path_dummy_lookup_failures",	NSS_STATS_TYPE_SPECIAL},
+	{"mesh_proxy_path_dummy_add_failures",		NSS_STATS_TYPE_SPECIAL},
+	{"mesh_proxy_path_dummy_add_success",		NSS_STATS_TYPE_SPECIAL}
 };
 
 /*
