@@ -371,7 +371,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@codeaurora.org>
  
 --- a/drivers/net/wireless/ath/ath11k/core.c
 +++ b/drivers/net/wireless/ath/ath11k/core.c
-@@ -284,7 +284,58 @@ static const struct ath11k_hw_params ath
+@@ -285,7 +285,57 @@ static const struct ath11k_hw_params ath
  		.reo_dest_ring_map_shift = HAL_IPQ5018_REO_DEST_RING_CTRL_HASH_RING_SHIFT,
  		.ce_fwlog_enable = false,
  		.fwmem_mode_change = false,
@@ -403,7 +403,6 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@codeaurora.org>
 +		.supports_monitor = true,
 +		.supports_shadow_regs = false,
 +		.idle_ps = false,
-+		.cold_boot_calib = false,
 +		.supports_suspend = false,
 +		.host_ce_config = ath11k_host_ce_config_qcn9074,
 +		.ce_count = 6,
@@ -424,7 +423,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@codeaurora.org>
 +		.spectral_fft_hdr_len = 24,
 +		.reo_dest_ring_map_shift = HAL_IPQ5018_REO_DEST_RING_CTRL_HASH_RING_SHIFT,
 +		.ce_fwlog_enable = false,
-+		.cold_boot_calib = false,
++		.cold_boot_calib = true,
 + 		.fwmem_mode_change = false,
 + 	},
  };

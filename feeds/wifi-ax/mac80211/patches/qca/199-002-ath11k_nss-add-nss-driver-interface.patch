@@ -418,11 +418,11 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +				     NL80211_KEYTYPE_PAIRWISE,
 +				     is_mcbc ? mcast_keyidx : ucast_keyidx,
 +				     NULL, GFP_ATOMIC);
-+	kfree(skb);
++	dev_kfree_skb_any(skb);
 +	return;
 +
 +fail:
-+	kfree(skb);
++	dev_kfree_skb_any(skb);
 +	ath11k_warn(ab, "ath11k_nss: Failed to handle mic error\n");
 +	return;
 +}

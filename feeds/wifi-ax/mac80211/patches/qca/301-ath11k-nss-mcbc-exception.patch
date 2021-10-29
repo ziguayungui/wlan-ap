@@ -16,15 +16,54 @@ Change-Id: I4a6ac67a1c2cf3ab7a219d0953907191606a5e70
 
 --- a/drivers/net/wireless/ath/ath11k/nss.c
 +++ b/drivers/net/wireless/ath/ath11k/nss.c
-@@ -769,6 +769,7 @@ ath11k_nss_vdev_special_data_receive(str
+@@ -600,7 +600,7 @@ static int ath11k_nss_undecap_nwifi(stru
+ 
+ static void ath11k_nss_wds_type_rx(struct ath11k *ar, struct net_device *dev,
+ 				   u8* src_mac, u8 is_sa_valid, u8 addr4_valid,
+-				   u16 peer_id, bool *drop)
++				   u16 peer_id)
+ {
+ 	struct ath11k_base *ab = ar->ab;
+ 	struct ath11k_ast_entry *ast_entry = NULL;
+@@ -635,9 +635,6 @@ static void ath11k_nss_wds_type_rx(struc
+ 				ath11k_nss_update_wds_peer(ar, ta_peer, src_mac);
+ 			}
+ 		}
+-
+-		if (!ta_peer->nss.ext_vdev_up)
+-			drop = true;
+ 	}
+ 
+ 	spin_unlock_bh(&ab->base_lock);
+@@ -681,8 +678,7 @@ static void ath11k_nss_mec_handler(struc
+ 
+ static void ath11k_nss_vdev_spl_receive_ext_wdsdata(struct ath11k_vif *arvif,
+ 						    struct sk_buff *skb,
+-						    struct nss_wifi_vdev_wds_per_packet_metadata *wds_metadata,
+-						    bool *drop)
++						    struct nss_wifi_vdev_wds_per_packet_metadata *wds_metadata)
+ {
+ 	struct ath11k *ar = arvif->ar;
+ 	struct ath11k_base *ab = ar->ab;
+@@ -704,7 +700,7 @@ static void ath11k_nss_vdev_spl_receive_
+ 	switch (wds_type) {
+ 		case NSS_WIFI_VDEV_WDS_TYPE_RX:
+ 			ath11k_nss_wds_type_rx(ar, skb->dev, src_mac, is_sa_valid,
+-					       addr4_valid, peer_id, &drop);
++					       addr4_valid, peer_id);
+ 			break;
+ 		case NSS_WIFI_VDEV_WDS_TYPE_MEC:
+ 			ath11k_nss_mec_handler(ar, (u8 *)(skb->data));
+@@ -769,7 +765,7 @@ ath11k_nss_vdev_special_data_receive(str
  	struct nss_wifi_vdev_wds_per_packet_metadata *wds_metadata = NULL;
  	struct ath11k_vif *arvif;
  	struct ath11k_base *ab;
+-	bool drop = false;
 +	struct ath11k_skb_rxcb *rxcb;
- 	bool drop = false;
  	bool eth_decap = false;
  	int data_offs = 0;
-@@ -799,15 +800,32 @@ ath11k_nss_vdev_special_data_receive(str
+ 	int ret = 0;
+@@ -804,15 +800,31 @@ ath11k_nss_vdev_special_data_receive(str
  		return;
  	}
  
@@ -39,10 +78,9 @@ Change-Id: I4a6ac67a1c2cf3ab7a219d0953907191606a5e70
 +		if (eth_decap) {
 +			wds_metadata = &wifi_metadata->metadata.wds_metadata;
 +			ath11k_nss_vdev_spl_receive_ext_wdsdata(arvif, skb,
-+								wds_metadata, &drop);
++								wds_metadata);
 +		}
-+		if (!drop)
-+			ath11k_nss_deliver_rx(arvif->vif, skb, eth_decap, data_offs, napi);
++		dev_kfree_skb_any(skb);
 +	break;
 +	case NSS_WIFI_VDEV_EXT_DATA_PKT_TYPE_MCBC_RX:
 +		ath11k_dbg_dump(ab, ATH11K_DBG_DP_RX, "",
@@ -65,7 +103,7 @@ Change-Id: I4a6ac67a1c2cf3ab7a219d0953907191606a5e70
  }
  
  static void
-@@ -1953,6 +1971,7 @@ ath11k_nss_mesh_link_vdev_special_data_r
+@@ -2001,6 +2013,7 @@ ath11k_nss_mesh_link_vdev_special_data_r
  		rxcb->rx_desc = (struct hal_rx_desc *)skb->head;
  		rxcb->is_first_msdu = rxcb->is_last_msdu = true;
  		rxcb->is_continuation = false;
@@ -73,7 +111,7 @@ Change-Id: I4a6ac67a1c2cf3ab7a219d0953907191606a5e70
  		ath11k_dp_rx_from_nss(arvif->ar, skb, napi);
  		break;
  	case NSS_WIFI_VDEV_EXT_DATA_PKT_TYPE_MESH:
-@@ -2568,8 +2587,15 @@ int ath11k_nss_vdev_create(struct ath11k
+@@ -2616,8 +2629,15 @@ int ath11k_nss_vdev_create(struct ath11k
  		goto free_vdev;
  
  	switch (arvif->vif->type) {
@@ -104,7 +142,7 @@ Change-Id: I4a6ac67a1c2cf3ab7a219d0953907191606a5e70
  	ATH11K_NSS_OPMODE_AP,
 --- a/drivers/net/wireless/ath/ath11k/dp_rx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
-@@ -2711,7 +2711,11 @@ static void ath11k_dp_rx_h_mpdu(struct a
+@@ -2738,7 +2738,11 @@ static void ath11k_dp_rx_h_mpdu(struct a
  
  	/* PN for multicast packets will be checked in mac80211 */
  	rxcb = ATH11K_SKB_RXCB(msdu);

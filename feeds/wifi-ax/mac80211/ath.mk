@@ -300,7 +300,7 @@ define KernelPackage/ath11k-ahb
   DEPENDS+= +kmod-ath11k +kmod-ath11k-pci
   FILES:= \
 	$(PKG_BUILD_DIR)/drivers/net/wireless/ath/ath11k/ath11k_ahb.ko 
-  AUTOLOAD:=$(call AutoProbe,ath11k_ahb)
+  #AUTOLOAD:=$(call AutoProbe,ath11k_ahb)
 endef
 
 define KernelPackage/ath11k-pci
@@ -310,7 +310,7 @@ define KernelPackage/ath11k-pci
   DEPENDS+= +kmod-ath11k
   FILES:= \
 	$(PKG_BUILD_DIR)/drivers/net/wireless/ath/ath11k/ath11k_pci.ko 
-  AUTOLOAD:=$(call AutoProbe,ath11k_pci)
+  #AUTOLOAD:=$(call AutoProbe,ath11k_pci)
 endef
 
 define KernelPackage/carl9170
