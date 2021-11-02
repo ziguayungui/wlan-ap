@@ -97,6 +97,7 @@ static void sm_events_report_clear_client(ds_dlist_t *report_list)
 			record != NULL;
 			record = ds_dlist_inext(&record_iter)) {
 		ds_dlist_iremove(&record_iter);
+		//LOG(ERROR, "DBGL: sm_events_report_clear_client. free record:%p. size:%d\n", record, sizeof(record));
 		dpp_event_record_free(record);
 		record = NULL;
 	}
@@ -113,6 +114,7 @@ static void sm_events_report_clear_channel(ds_dlist_t *report_list)
 			record = ds_dlist_inext(&record_iter))
 				{
 					ds_dlist_iremove(&record_iter);
+					//LOG(ERROR, "DBGL: sm_events_report_clear_client. free chan_record:%p. size:%d\n", record, sizeof(record));
 					dpp_event_channel_record_free(record);
 					record = NULL;
 				}
@@ -132,10 +134,16 @@ static void sm_events_report(EV_P_ ev_timer *w, int revents)
 	dpp_event_channel_switch_t *sm_record_cs = NULL;
 	ds_dlist_iter_t record_iter;
 
+#if 1
+	dpp_event_record_t *old_session = NULL, *next_session = NULL;
+	ds_dlist_iter_t session_iter;
+#endif
+
 	dpp_events_report_timer_restart(report_timer);
 
 	for (sm_record = ds_dlist_ifirst(&record_iter, &g_event_report.client_event_list); sm_record != NULL; sm_record = ds_dlist_inext(&record_iter)) {
 		dpp_record = dpp_event_record_alloc();
+		//LOG(ERROR, "DBGL: sm_events_report. dpp_rec:%p. size:%d\n", dpp_record, sizeof(dpp_record));
 		dpp_record->client_session.session_id = sm_record->client_session.session_id;
 		dpp_record->client_session.auth_event =  sm_record->client_session.auth_event;
 		dpp_record->client_session.assoc_event =  sm_record->client_session.assoc_event;
@@ -143,6 +151,18 @@ static void sm_events_report(EV_P_ ev_timer *w, int revents)
 		dpp_record->client_session.disconnect_event =  sm_record->client_session.disconnect_event;
 		dpp_record->client_session.auth_event =  sm_record->client_session.auth_event;
 		dpp_record->client_session.ip_event =  sm_record->client_session.ip_event;
+
+#if 1
+		for (old_session = ds_dlist_ifirst(&session_iter, &g_event_report.client_event_list);
+			old_session != NULL; old_session = next_session) {
+			next_session = ds_dlist_inext(&session_iter);
+			LOG(ERROR, "DBGLE: sm_events_report. old_session:%p, size:%d\n",
+				old_session, sizeof(*old_session));
+			ds_dlist_iremove(&session_iter);
+			dpp_event_record_free(old_session);
+			old_session = NULL;
+		}
+#endif
 
 		/* Memset all event pointers in the global event record to NULL */
 		memset(&sm_record->client_session, 0, sizeof(dpp_event_record_session_t));
@@ -156,6 +176,7 @@ static void sm_events_report(EV_P_ ev_timer *w, int revents)
 
 	for (sm_record_cs = ds_dlist_ifirst(&record_iter, &g_event_report.channel_switch_list); sm_record_cs != NULL; sm_record_cs = ds_dlist_inext(&record_iter)) {
 		dpp_record_cs = dpp_event_channel_switch_alloc();
+		//LOG(ERROR, "DBGL: sm_events_report. dpp_reccs:%p. size:%d\n", dpp_record_cs, sizeof(dpp_record_cs));
 
 		dpp_record_cs->channel_event.band = sm_record_cs->channel_event.band;
 		dpp_record_cs->channel_event.reason =  sm_record_cs->channel_event.reason;
@@ -163,6 +184,7 @@ static void sm_events_report(EV_P_ ev_timer *w, int revents)
 		dpp_record_cs->channel_event.timestamp =  sm_record_cs->channel_event.timestamp;
 
 		ds_dlist_iremove(&record_iter);
+		//LOG(ERROR, "DBGL: sm_events_report. free dpp_reccs:%p. size:%d\n", dpp_record_cs, sizeof(dpp_record_cs));
 		dpp_event_channel_record_free(sm_record_cs);
 		sm_record_cs = NULL;
 

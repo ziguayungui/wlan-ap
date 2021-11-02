@@ -426,13 +426,16 @@ static void ubus_collector_session_cb(struct ubus_request *req, int type,
 
 	char *ifname = (char *)req->priv;
 
-	dpp_event_record_t *old_session = NULL;
+	dpp_event_record_t *old_session = NULL, *next_session = NULL;
 	ds_dlist_iter_t session_iter;
 
 	/* First remove all the old sessions from the global report which are already consumed by sm_events */
-	for (old_session = ds_dlist_ifirst(&session_iter, &g_event_report.client_event_list); old_session != NULL; old_session = ds_dlist_inext(&session_iter)) {
-		if (old_session && old_session->hasSMProcessed) {
+	for (old_session = ds_dlist_ifirst(&session_iter, &g_event_report.client_event_list);
+		old_session != NULL; old_session = next_session) {
+		next_session = ds_dlist_inext(&session_iter);
+		if (old_session->hasSMProcessed) {
 			ds_dlist_iremove(&session_iter);
+			//LOG(ERROR, "DBGL: ubus_collector_session_cb. free dpp_evt_rec:%p. size:%d\n", old_session, sizeof(old_session));
 			dpp_event_record_free(old_session);
 			old_session = NULL;
 		}
