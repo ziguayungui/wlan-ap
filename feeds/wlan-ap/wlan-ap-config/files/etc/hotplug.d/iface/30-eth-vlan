@@ -44,6 +44,14 @@ if [ "$ACTION" = ifup -o "$ACTION" = ifupdate ]; then
 		net=$(uci get network.${INTERFACE}.ifname)
 
 		[ -z "$net" -o -z "$vid" -o "$vid" = 0 ] && exit 0
+		ip link add link $ifname name $ifname.$vid type vlan id $vid
+		ip link set dev $ifname.$vid up
+		brctl addbr vlan-$vid
+		brctl addif vlan-$vid $ifname.$vid
+		brctl delif br-wan $net
+		brctl delif br-lan $net
+		brctl addif vlan-$vid $net
+		ifconfig vlan-$vid up
 
 		bridge vlan add vid $vid dev br-lan self
 		bridge vlan add vid $vid dev br-wan self
@@ -73,6 +81,7 @@ else
 			bridge vlan del pvid $vid vid $vid dev $net untagged
 
 			bridge vlan add pvid 1 vid 1 dev $net untagged
+			brctl delif vlan-$vid $net
 		fi
 		exit 0
 	fi
