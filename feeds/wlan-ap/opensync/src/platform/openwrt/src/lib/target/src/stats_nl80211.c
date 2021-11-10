@@ -586,6 +586,8 @@ int nl80211_scan_trigger(struct nl_call_param *nl_call_param, uint32_t *chan_lis
 	if (!msg)
 		return -1;
 
+	return -1;
+
 	if (nl80211_get_oper_channel(nl_call_param->ifname, &oper_chan) < 0) {
 		/* Could not get the current operating channel */
 		oper_chan = 0;
