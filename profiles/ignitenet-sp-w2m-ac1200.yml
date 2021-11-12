@@ -1,0 +1,12 @@
+---
+profile: AP
+target: rtkmipsel
+subtarget: rtl8197f
+description: Build image for the IgniteNet SP-W2M-AC1200
+image: bin/targets/rtkmipsel/rtl8197f/openwrt-rtkmipsel-rtl8197f-sp-w2m-ac1200.bin
+feeds:
+  - name: rtkmipsel
+    path: ../../feeds/rtkmipsel
+diffconfig: |
+  CONFIG_DEVEL=y
+  CONFIG_TOOLCHAINOPTS=y
