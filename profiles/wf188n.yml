@@ -6,5 +6,13 @@ description: Build image for the Cigtech WF188n
 feeds:
   - name: ipq807x
     path: ../../feeds/ipq807x
+  - name: pyserial
+    path: ../../feeds/python-pyserial
 
-
+diffconfig: |
+  CONFIG_PACKAGE_python-base=y
+  CONFIG_PACKAGE_python-light=y
+  CONFIG_PACKAGE_python-pyserial=y
+  CONFIG_PACKAGE_libbz2=y
+  CONFIG_PACKAGE_libffi=y
+  CONFIG_PACKAGE_coreutils-stty=y
