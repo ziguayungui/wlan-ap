@@ -1,6 +1,8 @@
 ---
 description: Add the ucentral dependencies
 feeds:
+  - name: netexp
+    path: ../../feeds/netexp
   - name: ucentral
     path: ../../feeds/ucentral
   - name: tip
@@ -14,6 +16,7 @@ include:
   - qosify
 
 packages:
+  - netexpd
   - atfpolicy
   - kmod-batman-adv
   - batctl-default
