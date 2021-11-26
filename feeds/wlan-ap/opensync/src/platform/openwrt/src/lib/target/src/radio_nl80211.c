@@ -686,6 +686,7 @@ int nl80211_allowed_channels_get(char *name)
 		return -1;
 
 	msg = unl_genl_msg(&unl_req, NL80211_CMD_GET_WIPHY, true);
+	nla_put_flag(msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
 	unl_genl_request(&unl_req, msg, nl80211_recv, NULL);
 
 	return NL_OK;
