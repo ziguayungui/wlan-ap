@@ -266,12 +266,28 @@ static int nl80211_survey_recv(struct nl_msg *msg, void *arg)
 	if (si[NL80211_SURVEY_INFO_TIME_EXT_BUSY])
 		survey_record->chan_busy_ext = nla_get_u64(si[NL80211_SURVEY_INFO_TIME_EXT_BUSY]);
 
-	if (si[NL80211_SURVEY_INFO_TIME])
+	if (si[NL80211_SURVEY_INFO_TIME]) {
 		survey_record->duration_ms = nla_get_u64(si[NL80211_SURVEY_INFO_TIME]);
+		LOGD("nl80211_survey_recv. chan:%u, survey:%p, dur_ms:%llu\n",
+			survey_record->info.chan, survey_record,
+			survey_record->duration_ms);
+	}
+	else {
+		LOGD("nl80211_survey_recv. No duration info. chan:%u, dur_ms:0\n",
+			survey_record->info.chan);
+	}
 
-	if (si[NL80211_SURVEY_INFO_NOISE])
+	if (si[NL80211_SURVEY_INFO_NOISE]) {
 		survey_record->chan_noise = add_chan_noise_offset(survey_record->info.chan, 
 			nla_get_u8(si[NL80211_SURVEY_INFO_NOISE]));
+		LOGD("nl80211_survey_recv. chan:%u, survey:%p, nf:%u, adjusted_nf:%u\n",
+			survey_record->info.chan, survey_record,
+			nla_get_u8(si[NL80211_SURVEY_INFO_NOISE]), survey_record->chan_noise);
+	}
+	else {
+		LOGD("nl80211_survey_recv. no NF in the survey info. chan:%u, nf:%u\n",
+			survey_record->info.chan, survey_record->chan_noise);
+	}
 
 	survey_record->chan_in_use=si[NL80211_SURVEY_INFO_IN_USE] ? 1:0;
 
@@ -612,7 +628,11 @@ int nl80211_scan_trigger(struct nl_call_param *nl_call_param, uint32_t *chan_lis
 	if ((scan_type == RADIO_SCAN_TYPE_OFFCHAN) && dwell_time)
 		nla_put_u16(msg, NL80211_ATTR_MEASUREMENT_DURATION, dwell_time);
 
-	nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, requested_freq);
+	if ((scan_type == RADIO_SCAN_TYPE_OFFCHAN) && (chan_list[0] != oper_chan.channel)) {
+		nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, requested_freq);
+	} else if ((scan_type == RADIO_SCAN_TYPE_ONCHAN) && (chan_list[0] == oper_chan.channel)) {
+		nla_put_u32(msg, NL80211_ATTR_WIPHY_FREQ, requested_freq);
+	}
 
 	if (requested_freq > 5000) {
 		switch(oper_chan.bandwidth)

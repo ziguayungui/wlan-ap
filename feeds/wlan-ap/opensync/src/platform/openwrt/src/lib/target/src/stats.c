@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "target.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "nl80211.h"
 #include "phy.h"
@@ -192,14 +193,10 @@ void target_survey_record_free(target_survey_record_t *result)
 		free(result);
 }
 
-#define SURVEY_RADIOS 3
-static ds_dlist_t onChanList[SURVEY_RADIOS];
-static ds_dlist_t offChanList[SURVEY_RADIOS];
-
 bool target_stats_survey_get(radio_entry_t *radio_cfg, uint32_t *chan_list,
-			     uint32_t chan_num, radio_scan_type_t scan_type,
-			     target_stats_survey_cb_t *survey_cb,
-			     ds_dlist_t *survey_list, void *survey_ctx)
+							 uint32_t chan_num, radio_scan_type_t scan_type,
+							 target_stats_survey_cb_t *survey_cb,
+							 ds_dlist_t *survey_list, void *survey_ctx)
 {
 	char ifName[10];
 	int val=0;
@@ -209,78 +206,52 @@ bool target_stats_survey_get(radio_entry_t *radio_cfg, uint32_t *chan_list,
 	sprintf(ifName,"wlan%d",radio);
 	ds_dlist_t raw_survey_list = DS_DLIST_INIT(target_survey_record_t, node);
 	target_survey_record_t *survey;
+	uint32_t oper_chan = 0;
 	struct nl_call_param nl_call_param = {
 		.ifname = ifName,
 		.type = radio_cfg->type,
 		.list = &raw_survey_list,
 	};
 	bool ret = true;
-	ds_dlist_t *onchan_list;
-	ds_dlist_t *offchan_list;
-
-	if(radio<SURVEY_RADIOS) {
-		onchan_list=&onChanList[radio];
-		offchan_list=&offChanList[radio];
-	} else {
-		return false;
-	}
 
 	if (nl80211_get_survey(&nl_call_param) < 0)
 		ret = false;
-	if (scan_type == RADIO_SCAN_TYPE_ONCHAN) {
-		while (!ds_dlist_is_empty(onchan_list)) {
-			survey = ds_dlist_head(onchan_list);
-			ds_dlist_remove(onchan_list, survey);
-			get_on_channel_bandwidth(radio_cfg, &channel_bandwidth);
-			survey->chan_width = channel_bandwidth;
-			ds_dlist_insert_tail(survey_list, survey);
-		}
-	} else {
-		while (!ds_dlist_is_empty(offchan_list)) {
-			survey = ds_dlist_head(offchan_list);
-			ds_dlist_remove(offchan_list, survey);
-			ds_dlist_insert_tail(survey_list, survey);
-		}
-	}
+	if (!target_stats_channel_get(nl_call_param.ifname, &oper_chan))
+		ret = false;
+
 	while (!ds_dlist_is_empty(&raw_survey_list)) {
 		survey = ds_dlist_head(&raw_survey_list);
 		ds_dlist_remove(&raw_survey_list, survey);
 		LOGD("Survey entry dur %llu busy %llu tx %llu rx %llu rx_self %llu chan %d type %d",
 				survey->duration_ms, survey->chan_busy, survey->chan_tx, survey->chan_rx,
 				survey->chan_self, survey->info.chan, scan_type);
-		if ((scan_type == RADIO_SCAN_TYPE_ONCHAN) && (survey->duration_ms != 0)) {
-			if (survey->info.chan == chan_list[0]) {
+
+		if (survey->info.chan == chan_list[0] && (survey->duration_ms != 0)) {
+			if ((scan_type == RADIO_SCAN_TYPE_ONCHAN) && survey->info.chan == oper_chan) {
 				get_on_channel_bandwidth(radio_cfg, &channel_bandwidth);
 				survey->chan_width = channel_bandwidth;
 				ds_dlist_insert_tail(survey_list, survey);
-			} else {
-				ds_dlist_insert_tail(offchan_list, survey);
-			}
-		} else if ((scan_type != RADIO_SCAN_TYPE_ONCHAN) && (survey->duration_ms != 0)) {
-			if (!survey->chan_in_use) {
+			} else if ((scan_type == RADIO_SCAN_TYPE_OFFCHAN) && survey->info.chan != oper_chan) {
 				ds_dlist_insert_tail(survey_list, survey);
 			} else {
-				get_on_channel_bandwidth(radio_cfg, &channel_bandwidth);
-				survey->chan_width = channel_bandwidth;
-				ds_dlist_insert_tail(onchan_list, survey);
+				target_survey_record_free(survey);
+				survey = NULL;
 			}
-		} else {
-			target_survey_record_free(survey);
-			survey = NULL;
 		}
 	}
 	(*survey_cb)(survey_list, survey_ctx, ret);
-	return ret;
+	return true;
 }
 
-#define PERCENT(v1, v2) (v2 > 0 ? ((v1 > v2) ? 100 : (v1*100/v2)) : 0)
+#define PERCENT(v1, v2) round((v2 > 0 ? ((v1 > v2) ? 100 : ((float)v1*100/(float)v2)) : 0))
 #define DELTA(n, p) ((n) < (p) ? (n) : (n) - (p))
 
 bool target_stats_survey_convert(radio_entry_t *radio_cfg, radio_scan_type_t scan_type,
 				 target_survey_record_t *data_new, target_survey_record_t *data_old,
-				 dpp_survey_record_t *survey_record)
+				 dpp_survey_record_t *survey_record, int sampling_interval)
 {
 	target_survey_record_t delta;
+	uint64_t diff_dur;
 
 	if (data_new->info.chan != data_old->info.chan) {
 		/* Do not consider the old channel's data */
@@ -293,21 +264,39 @@ bool target_stats_survey_convert(radio_entry_t *radio_cfg, radio_scan_type_t sca
 		 * Chan_info event down in the driver updates only the duration, noise floor
 		 * and the chan_busy data.
 		 */
-		data_new->duration_ms += data_old->duration_ms;
+		if (data_new->duration_ms == data_old->duration_ms)
+			diff_dur = 0;
+		else
+			diff_dur = data_new->duration_ms - data_old->chan_info_dur_ms;
+
+		LOGD("target_stats_survey_convert. chan:%d, new_survey:%p, old_survey:%p, newChanDur:%llu, oldChanDur:%llu,"
+			" diffChanDur:%llu, oldDur:%llu, newBusy:%llu, oldBusy:%llu"
+			" new_nf:%u, old_nf:%u\n",
+			data_new->info.chan, data_new, data_old, data_new->duration_ms, data_old->chan_info_dur_ms,
+			diff_dur, data_old->duration_ms, data_new->chan_busy, data_old->chan_busy,
+			data_new->chan_noise, data_old->chan_noise);
+
+		data_new->chan_info_dur_ms = data_new->duration_ms;
+		data_new->duration_ms = (data_old->duration_ms + diff_dur);
 		data_new->chan_busy += data_old->chan_busy;
 	}
 
-
-	LOGD("Survey convert scan_type %d chan %d duration_new:%llu duration_old:%llu "
+	LOGD("DBGL: Survey convert scan_type %d chan %d new_survey:%p, old_survey:%p, duration_new:%llu duration_old:%llu diffDur:%llu "
 	     "busy_new %llu busy_old:%llu tx_new %llu tx_old:%llu rx_new %llu rx_old:%llu "
-	     "rx_self_new %llu rx_self_old:%llu channel_bandwidth:%llu",
-	     scan_type, data_new->info.chan, data_new->duration_ms, data_old->duration_ms,
-	     data_new->chan_busy, data_old->chan_busy, data_new->chan_tx, data_old->chan_tx,
-	     data_new->chan_rx, data_old->chan_rx, data_new->chan_self, data_old->chan_self, data_new->chan_width);
+	     "rx_self_new %llu rx_self_old:%llu channel_bandwidth:%llu\n new_nf:%u old_nf:%u",
+	     scan_type, data_new->info.chan, data_new, data_old, data_new->duration_ms, data_old->duration_ms,
+	     (data_new->duration_ms - data_old->duration_ms), data_new->chan_busy,
+	     data_old->chan_busy, data_new->chan_tx, data_old->chan_tx, data_new->chan_rx,
+	     data_old->chan_rx, data_new->chan_self, data_old->chan_self, data_new->chan_width,
+	     data_new->chan_noise, data_old->chan_noise);
 
 	memset(&delta, 0, sizeof(delta));
 
 	delta.duration_ms = DELTA(data_new->duration_ms, data_old->duration_ms);
+
+	if (delta.duration_ms > (uint32_t)sampling_interval*1000)
+		delta.duration_ms = (uint32_t)sampling_interval*1000;
+
 	delta.chan_busy = DELTA(data_new->chan_busy, data_old->chan_busy);
 	delta.chan_busy_ext = DELTA(data_new->chan_busy_ext, data_old->chan_busy_ext);
 	delta.chan_tx = DELTA(data_new->chan_tx, data_old->chan_tx);
@@ -563,11 +552,5 @@ bool target_stats_capacity_convert(target_capacity_data_t *capacity_new,
 }
 static __attribute__((constructor)) void sm_init(void)
 {
-	int i;
 	stats_nl80211_init();
-	for(i=0; i<SURVEY_RADIOS; i++)
-	{
-		ds_dlist_init(&onChanList[i],target_survey_record_t, node);
-		ds_dlist_init(&offChanList[i],target_survey_record_t, node);
-	}
 }

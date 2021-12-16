@@ -54,6 +54,7 @@ typedef struct
 	uint64_t duration_ms;
 	uint32_t chan_in_use;
 	uint64_t chan_width;
+	uint64_t chan_info_dur_ms;
 } target_survey_record_t;
 
 typedef void target_capacity_data_t;

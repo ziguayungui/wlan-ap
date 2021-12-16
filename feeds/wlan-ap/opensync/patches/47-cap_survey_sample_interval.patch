@@ -1,0 +1,38 @@
+Index: opensync-2.0.5.0/src/sm/src/sm_survey_report.c
+===================================================================
+--- opensync-2.0.5.0.orig/src/sm/src/sm_survey_report.c
++++ opensync-2.0.5.0/src/sm/src/sm_survey_report.c
+@@ -714,7 +714,8 @@ bool sm_survey_update_list_cb (
+                     scan_type,
+                     survey_entry,
+                     record_entry,
+-                    result_entry);
++                    result_entry,
++		    request_ctx->sampling_interval);
+         if (true != rc) {
+             LOGN("Processing %s %s %u survey record %u "
+                  "(Failed to convert stats)",
+@@ -960,7 +961,8 @@ bool sm_survey_threshold_util_cb (
+                 RADIO_SCAN_TYPE_ONCHAN,
+                 survey_entry,
+                 &survey_ctx->threshold_record,
+-                &result_entry);
++                &result_entry,
++		request_ctx->sampling_interval);
+     if (true != rc) {
+         LOGE("Processing %s %s %u survey "
+              "(failed to convert threshold stats)",
+Index: opensync-2.0.5.0/src/lib/target/inc/target_common.h
+===================================================================
+--- opensync-2.0.5.0.orig/src/lib/target/inc/target_common.h
++++ opensync-2.0.5.0/src/lib/target/inc/target_common.h
+@@ -486,7 +486,8 @@ bool target_stats_survey_convert (
+         radio_scan_type_t           scan_type,
+         target_survey_record_t     *data_new,
+         target_survey_record_t     *data_old,
+-        dpp_survey_record_t        *survey_record);
++        dpp_survey_record_t        *survey_record,
++	int                        sampling_interval);
+ 
+ /// @} LIB_TARGET_SURVEY
+ 
