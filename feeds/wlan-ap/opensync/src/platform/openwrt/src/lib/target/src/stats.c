@@ -234,9 +234,14 @@ bool target_stats_survey_get(radio_entry_t *radio_cfg, uint32_t *chan_list,
 			} else if ((scan_type == RADIO_SCAN_TYPE_OFFCHAN) && survey->info.chan != oper_chan) {
 				ds_dlist_insert_tail(survey_list, survey);
 			} else {
+				LOGD("====Free survey else 1====%d\n", survey->info.chan);
 				target_survey_record_free(survey);
 				survey = NULL;
 			}
+		} else {
+			LOGD("====Free survey else 2====%d\n", survey->info.chan);
+			target_survey_record_free(survey);
+			survey = NULL;
 		}
 	}
 	(*survey_cb)(survey_list, survey_ctx, ret);
@@ -291,7 +296,11 @@ bool target_stats_survey_convert(radio_entry_t *radio_cfg, radio_scan_type_t sca
 	survey_record->chan_rx       = PERCENT(delta.chan_rx, delta.duration_ms);
 	survey_record->chan_busy_ext = PERCENT(delta.chan_busy_ext, delta.duration_ms);
 	survey_record->chan_busy     = PERCENT(delta.chan_busy, delta.duration_ms);
-	survey_record->chan_noise    = data_new->chan_noise;
+	if (0 == data_new->chan_noise) {
+		survey_record->chan_noise = data_old->chan_noise;
+	} else {
+		survey_record->chan_noise = data_new->chan_noise;
+	}
 	survey_record->duration_ms   = delta.duration_ms;
 
 	return true;

@@ -397,10 +397,10 @@ nl80211_scan_add(char *name, target_scan_cb_t *scan_cb, void *scan_ctx)
 		strncpy(nl80211_scan->name, name, IF_NAMESIZE);
 		nl80211_scan->avl.key = nl80211_scan->name;
 		avl_insert(&nl80211_scan_tree, &nl80211_scan->avl);
-		LOGD("%s: added scan context. avl:%p. scan_ctx:%p",
+		LOGD("====%s: added scan context. avl:%p. scan_ctx:%p",
 			name, nl80211_scan, scan_ctx);
 	} else {
-		LOGD("nl80211_scan_add: %s: Reusing the avl:%p. scan_ctx:%p\n",
+		LOGD("====nl80211_scan_add: %s: Reusing the avl:%p. scan_ctx:%p\n",
 			name, nl80211_scan, nl80211_scan->scan_ctx);
 	}
 
