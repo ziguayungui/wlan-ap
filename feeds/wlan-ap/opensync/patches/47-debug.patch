@@ -16,7 +16,15 @@
          return false;
      }
      scan_ctx = (sm_scan_ctx_t *) ctx;
-@@ -154,25 +155,25 @@ clean:
+@@ -145,6 +146,7 @@ clean:
+     /* Notify upper layer about scan status */
+     if (scan_ctx->scan_request.scan_cb)
+     {
++    	LOGI("====Calling scan_cb %s scan status %d\n", __func__, scan_status);
+         scan_ctx->scan_request.scan_cb(scan_ctx->scan_request.scan_ctx, scan_status);
+     }
+ 
+@@ -154,25 +156,25 @@ clean:
      }
  
      /* Remove processed context */
@@ -50,7 +58,16 @@
  		scan_ctx,
  		radio_get_name_from_type(scan_ctx->scan_request.radio_cfg->type),
  		radio_get_scan_name_from_type(scan_ctx->scan_request.scan_type),
-@@ -219,8 +220,8 @@ bool sm_scan_schedule_process(
+@@ -205,7 +207,7 @@ void scan_schedule_timeout_cb (EV_P_ ev_
+         radio_get_name_from_type(request_ctx->radio_cfg->type),
+         radio_get_scan_name_from_type(request_ctx->scan_type),
+         request_ctx->chan_list[0]);
+-
++    LOGI("====Calling sm_scan_schedule_stop from %s scan type %d\n", __func__, request_ctx->scan_type);
+     sm_scan_schedule_stop(
+             request_ctx->radio_cfg,
+             request_ctx->scan_type);
+@@ -219,8 +221,8 @@ bool sm_scan_schedule_process(
      sm_scan_request_t              *request_ctx =
          &scan_ctx->scan_request;
  
@@ -61,7 +78,7 @@
          radio_get_name_from_type(request_ctx->radio_cfg->type),
          radio_get_scan_name_from_type(request_ctx->scan_type),
          request_ctx->chan_list[0]);
-@@ -246,7 +247,7 @@ bool sm_scan_schedule_process(
+@@ -246,7 +248,7 @@ bool sm_scan_schedule_process(
                  scan_ctx);
      if (true != rc) {
          LOG(DEBUG,
@@ -70,3 +87,39 @@
              radio_get_name_from_type(request_ctx->radio_cfg->type),
              radio_get_scan_name_from_type(request_ctx->scan_type),
              request_ctx->chan_list[0]);
+--- a/src/sm/src/sm_neighbor_report.c
++++ b/src/sm/src/sm_neighbor_report.c
+@@ -1066,6 +1066,7 @@ bool sm_neighbor_stats_process (
+     }
+ 
+     /* Stop any target scan processing */
++    LOG(INFO, "=====Calling sm_scan_schedule_stop %s\n", __func__);
+     sm_scan_schedule_stop(radio_cfg, scan_type);
+ 
+     if (request_ctx->reporting_interval) {
+--- a/src/sm/src/sm_survey_report.c
++++ b/src/sm/src/sm_survey_report.c
+@@ -848,6 +848,7 @@ void sm_survey_scan_cb(
+ 
+     /* Scan error occurred, skip records and retry */
+     if (!scan_status) {
++    	LOGI("===Invalid scan status %s \n", __func__);
+         LOGE("Processing %s %s %d survey report "
+              "(Failed to scan)",
+              radio_get_name_from_cfg(radio_cfg_ctx),
+@@ -867,6 +868,7 @@ void sm_survey_scan_cb(
+             scan_status);
+ 
+     /* Fetch latest survey records */
++    LOGI("=====Calling target_stats_survey_get from %s scan type %d\n", __func__, scan_type);
+     rc =
+         target_stats_survey_get (
+                 radio_cfg_ctx,
+@@ -1741,6 +1743,7 @@ bool sm_survey_stats_process (
+     }
+ 
+     /* Stop any target scan Processing */
++    LOGI("====Calling sm_scan_schedule_stop from %s scan type %d\n", __func__, scan_type);
+     sm_scan_schedule_stop(radio_cfg, scan_type);
+ 
+     if (request_ctx->reporting_interval) {

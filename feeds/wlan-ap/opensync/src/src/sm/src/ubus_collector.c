@@ -521,7 +521,7 @@ static void ubus_collector_hostapd_invoke(void *object_path)
 	}
 
 	if (ubus_lookup_id(ubus, obj_path, &ubus_object_id)) {
-		LOG(ERR, "ubus_collector: could not find ubus object %s",
+		LOG(DEBUG, "ubus_collector: could not find ubus object %s",
 		    obj_path);
 		if (request)
 			free(request);
