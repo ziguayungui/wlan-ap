@@ -30,6 +30,47 @@ if (fd) {
 		exit(1);
 	}
 }
+
+
+/* replace currunt redirector */
+for (let r in redirector.fields) {
+	if (r.name == "Redirector") {
+		redirector_current = r.value;
+
+		/* Read redirector backup if available */
+		let redirector_backup = { };
+
+		let fd = fs.open("/certificates/redirector.txt", "r");
+		if (fd) {
+			let data = fd.read("all");
+			fd.close();
+			redirector_backup = rtrim(data);
+			ret = system(sprintf("cat /certificates/redirector_map.txt | grep %s | awk -F ' ' '{ print $2 }' > /certificates/redirector.txt", redirector_backup));
+			if (ret) {
+				warn("firstcontact failed to get redirector\n");
+				exit(1);
+			}
+		}
+
+		let fd = fs.open("/certificates/redirector.txt", "r");
+		if (fd) {
+			let redirector_backup = fd.read("all");
+
+			r.value = rtrim(redirector_backup);
+		}
+	}
+}
+system("rm /certificates/redirector.txt");
+warn("current redirector: ", redirector_current);
+
+warn("redirector backup: ", redirector_backup);
+
+let fd = fs.open("/etc/ucentral/redirector.json", "w");
+if (fd) {
+	fd.write(redirector);
+	fd.close();
+}
+
 let config = {};
 
 for (let r in redirector.fields)
