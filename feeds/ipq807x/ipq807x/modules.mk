@@ -85,8 +85,8 @@ define KernelPackage/usb-phy-ipq5018
         CONFIG_USB_QCA_M31_PHY \
         CONFIG_PHY_IPQ_UNIPHY_USB
   FILES:= \
-        $(LINUX_DIR)/drivers/usb/phy/phy-qca-m31.ko \
-        $(LINUX_DIR)/drivers/phy/phy-qca-uniphy.ko
+	$(LINUX_DIR)/drivers/usb/phy/phy-qca-m31.ko \
+        $(LINUX_DIR)/drivers/phy/qualcomm/phy-qca-uniphy.ko
   AUTOLOAD:=$(call AutoLoad,45,phy-qca-m31 phy-qca-uniphy,1)
   $(call AddDepends/usb)
 endef
