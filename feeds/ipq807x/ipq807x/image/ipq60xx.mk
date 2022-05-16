@@ -54,14 +54,6 @@ define Device/wallys_dr6018_v4
 endef
 #TARGET_DEVICES += wallys_dr6018_v4
 
-define Device/qcom_cp01_c1
-  DEVICE_TITLE := Qualcomm Cypress C1
-  DEVICE_DTS := qcom-ipq6018-cp01-c1
-  SUPPORTED_DEVICES := qcom,ipq6018-cp01
-  DEVICE_PACKAGES := ath11k-wifi-qcom-ipq6018
-endef
-#TARGET_DEVICES += qcom_cp01_c1
-
 define Device/glinet_ax1800
   DEVICE_TITLE := GL-iNet AX1800
   DEVICE_DTS := qcom-ipq6018-gl-ax1800
@@ -87,4 +79,4 @@ define Device/yuncore_ax840
   SUPPORTED_DEVICES := yuncore,ax840
   DEVICE_PACKAGES := ath11k-wifi-yuncore-ax840 uboot-env
 endef
-#TARGET_DEVICES += yuncore_ax840
+TARGET_DEVICES += yuncore_ax840
