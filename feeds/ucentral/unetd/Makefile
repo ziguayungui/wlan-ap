@@ -10,9 +10,9 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=unetd
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=https://github.com/nbd168/unetd
-PKG_SOURCE_DATE:=2022-06-15
-PKG_SOURCE_VERSION:=d7df17009e7fe0828a38ce9f6ad107d75c04f5f4
-PKG_MIRROR_HASH:=c966f29cd553967b2a6a1c6dc32549129a1ae9303b1d2d8cb294f8bbd7f21768
+PKG_SOURCE_DATE:=2022-06-29
+PKG_SOURCE_VERSION:=ef05d9efd15d2c0e08685d663b465f666d6edff6
+PKG_MIRROR_HASH:=49e94d98d9662336e0f3784f0a976129d5a236b21f614c98017cf78f0f0993ee
 
 PKG_LICENSE:=GPL-2.0
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
@@ -21,12 +21,21 @@ PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
+include $(INCLUDE_DIR)/bpf.mk
+include $(INCLUDE_DIR)/nls.mk
+
+define Package/libunet
+  SECTION:=libs
+  CATEGORY:=Libraries
+  TITLE:=unetd support library
+  DEPENDS:=+libubox
+endef
 
 define Package/unetd
   SECTION:=utils
   CATEGORY:=Base system
-  TITLE:=Wireguard network configuration service
-  DEPENDS:=+libubox +libubus +libblobmsg-json +libnl-tiny +TARGET_ipq807x:kmod-wireguard-backport +!TARGET_ipq807x:kmod-wireguard +wireguard-tools
+  TITLE:=OpenWrt wireguard overlay network configuration service
+  DEPENDS:=+libubox +libubus +libblobmsg-json +libnl-tiny +libunet +kmod-wireguard +libbpf $(BPF_DEPENDS)
 endef
 
 TARGET_CFLAGS += \
@@ -36,16 +45,29 @@ TARGET_CFLAGS += \
 CMAKE_OPTIONS += \
 	-DLIBNL_LIBS=-lnl-tiny
 
+define Build/Compile
+	$(call CompileBPF,$(PKG_BUILD_DIR)/mss-bpf.c)
+	$(call Build/Compile/Default,)
+endef
+
+define Package/libunet/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libunet.so* $(1)/usr/lib/
+endef
+
 define Package/unetd/install
 	$(INSTALL_DIR) \
+		$(1)/lib/bpf \
 		$(1)/etc/init.d \
 		$(1)/lib/netifd/proto \
 		$(1)/usr/sbin
 	$(INSTALL_BIN) \
 		$(PKG_INSTALL_DIR)/usr/sbin/unetd \
 		$(1)/usr/sbin/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/mss-bpf.o $(1)/lib/bpf/mss.o
 	$(INSTALL_BIN) ./files/unetd.init $(1)/etc/init.d/unetd
 	$(INSTALL_BIN) ./files/unetd.sh $(1)/lib/netifd/proto
 endef
 
+$(eval $(call BuildPackage,libunet))
 $(eval $(call BuildPackage,unetd))
