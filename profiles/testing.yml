@@ -1,0 +1,7 @@
+---
+description: packages and dependencies for automated and manual testing
+feeds:
+  - name: usteer_web_ucode
+    uri: https://codeberg.org/stintel/usteer-web-ucode.git
+packages:
+  - usteer-web-ucode
