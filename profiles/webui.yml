@@ -7,6 +7,7 @@ feeds:
 packages:
   - cgi-io
   - liblucihttp
+  - liblucihttp-ucode
   - lua
   - luci-base
   - luci-mod-ucentral
@@ -18,3 +19,4 @@ packages:
   - rpcd-mod-rrdns
   - uhttpd
   - uhttpd-mod-ubus
+  - uhttpd-mod-ucode
