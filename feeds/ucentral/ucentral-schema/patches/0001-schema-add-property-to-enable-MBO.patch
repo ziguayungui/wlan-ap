@@ -1,0 +1,122 @@
+From 5b7ba5ebeec7d6a24c97799ee9024a216f97893c Mon Sep 17 00:00:00 2001
+From: Stijn Tintel <stijn@linux-ipv6.be>
+Date: Thu, 18 Aug 2022 14:01:47 +0300
+Subject: [PATCH] schema: add property to enable MBO
+
+Signed-off-by: Stijn Tintel <stijn@linux-ipv6.be>
+---
+ renderer/templates/interface/ssid.uc | 20 +++++++++++++++++++-
+ schema/interface.ssid.yml            |  5 +++++
+ schemareader.uc                      | 14 ++++++++++++++
+ ucentral.schema.json                 |  4 ++++
+ 4 files changed, 42 insertions(+), 1 deletion(-)
+
+diff --git a/renderer/templates/interface/ssid.uc b/renderer/templates/interface/ssid.uc
+index 559b27c..360f57a 100644
+--- a/renderer/templates/interface/ssid.uc
++++ b/renderer/templates/interface/ssid.uc
+@@ -212,7 +212,7 @@
+ 		let radius_vendor = "26:x:0000e608" + // vendor element
+ 			"0113" + replace(radius_serial, /./g, (m) => sprintf("%02x", ord(m)));
+ 
+-		let radius_ip = sprintf("%s:%s", server, port);
++		let radius_ip = sprintf("%s:%", server, port);
+ 		let radius_ip_len = length(radius_ip) + 2;
+ 		radius_vendor += "02" + sprintf("%02x", radius_ip_len) + replace(radius_ip, /./g, (m) => sprintf("%02x", ord(m)));
+ 		return radius_vendor;
+@@ -245,6 +245,22 @@
+ 		return '';
+ 	}
+ 
++	function validate_multi_band_operation(phy) {
++		if (!ssid.multi_band_operation)
++			return 0;
++
++		if (ssid.encryption.proto in [ "psk2", "psk-mixed", "sae", "sae-mixed", "wpa3", "wpa3-192", "wpa3-mixed" ]) {
++			if (match_ieee80211w(phy) > 0) {
++				return 1;
++			} else {
++				warn("When WPA2 or higher is enabled, MBO requires Protected Management Frames to be enabled");
++				return 0;
++			}
++		} else {
++			return 1;
++		}
++	}
++
+ 	let radius_gw_proxy = ssid.services && (index(ssid.services, "radius-gw-proxy") >= 0);
+ %}
+ 
+@@ -255,11 +271,13 @@
+ {%   let id = wiphy.allocate_ssid_section_id(phy) %}
+ {%   let crypto = validate_encryption(phy); %}
+ {%   let ifname = calculate_ifname(n) %}
++{%   let mbo = validate_multi_band_operation(phy); %}
+ {%   if (!crypto) continue; %}
+ set wireless.{{ section }}=wifi-iface
+ set wireless.{{ section }}.ucentral_path={{ s(location) }}
+ set wireless.{{ section }}.device={{ phy.section }}
+ set wireless.{{ section }}.ifname={{ s(ifname) }}
++set wireless.{{ section }}.mbo={{ mbo }}
+ {%   if (ssid?.encryption?.proto == 'owe-transition'): %}
+ {%      ssid.hidden_ssid = 1 %}
+ {%      ssid.name += '-OWE' %}
+diff --git a/schema/interface.ssid.yml b/schema/interface.ssid.yml
+index 66a2cba..2c3e863 100644
+--- a/schema/interface.ssid.yml
++++ b/schema/interface.ssid.yml
+@@ -116,6 +116,11 @@ properties:
+     type: integer
+     default: 20
+     maximum: 10000
++  multi-band-operation:
++    description:
++      Multi Band Operation aka Wi-Fi Agile Multiband .... TODO
++    type: boolean
++    default: false
+   encryption:
+     $ref: "https://ucentral.io/schema/v1/interface/ssid/encryption/"
+   multi-psk:
+diff --git a/schemareader.uc b/schemareader.uc
+index 188f84c..92edda3 100644
+--- a/schemareader.uc
++++ b/schemareader.uc
+@@ -4427,6 +4427,20 @@ function instantiateInterfaceSsid(location, value, errors) {
+ 			obj.fils_discovery_interval = 20;
+ 		}
+ 
++		function parseMultiBandOperation(location, value, errors) {
++			if (type(value) != "bool")
++				push(errors, [ location, "must be of type boolean" ]);
++
++			return value;
++		}
++
++		if (exists(value, "multi-band-operation")) {
++			obj.multi_band_operation = parseMultiBandOperation(location + "/multi-band-operation", value["multi-band-operation"], errors);
++		}
++		else {
++			obj.multi_band_operation = false;
++		}
++
+ 		if (exists(value, "encryption")) {
+ 			obj.encryption = instantiateInterfaceSsidEncryption(location + "/encryption", value["encryption"], errors);
+ 		}
+diff --git a/ucentral.schema.json b/ucentral.schema.json
+index e2ddcf5..37358a8 100644
+--- a/ucentral.schema.json
++++ b/ucentral.schema.json
+@@ -1684,6 +1684,10 @@
+                     "default": 20,
+                     "maximum": 10000
+                 },
++                "multi-band-operation": {
++                    "type": "boolean",
++                    "default": false
++                },
+                 "encryption": {
+                     "$ref": "#/$defs/interface.ssid.encryption"
+                 },
+-- 
+2.35.1
+

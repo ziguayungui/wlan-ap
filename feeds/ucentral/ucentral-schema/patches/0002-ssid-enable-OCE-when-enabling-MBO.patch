@@ -1,0 +1,25 @@
+From 712a180df961b151fd9e23d836520a39e8f41c08 Mon Sep 17 00:00:00 2001
+From: Stijn Tintel <stijn@linux-ipv6.be>
+Date: Wed, 31 Aug 2022 16:05:34 +0300
+Subject: [PATCH] ssid: enable OCE when enabling MBO
+
+Signed-off-by: Stijn Tintel <stijn@linux-ipv6.be>
+---
+ renderer/templates/interface/ssid.uc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/renderer/templates/interface/ssid.uc b/renderer/templates/interface/ssid.uc
+index 62b8fcf..0fea58a 100644
+--- a/renderer/templates/interface/ssid.uc
++++ b/renderer/templates/interface/ssid.uc
+@@ -278,6 +278,7 @@ set wireless.{{ section }}.ucentral_path={{ s(location) }}
+ set wireless.{{ section }}.device={{ phy.section }}
+ set wireless.{{ section }}.ifname={{ s(ifname) }}
+ set wireless.{{ section }}.mbo={{ mbo }}
++set wireless.{{ section }}.oce={{ mbo }}
+ {%   if (ssid?.encryption?.proto == 'owe-transition'): %}
+ {%      ssid.hidden_ssid = 1 %}
+ {%      ssid.name += '-OWE' %}
+-- 
+2.35.1
+
