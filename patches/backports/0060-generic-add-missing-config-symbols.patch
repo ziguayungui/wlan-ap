@@ -1,0 +1,78 @@
+From 4b87fd1dc586e569940b35585f2dc0c266aa4c58 Mon Sep 17 00:00:00 2001
+From: David Bauer <mail@david-bauer.net>
+Date: Fri, 16 Apr 2021 22:44:53 +0200
+Subject: [PATCH] generic: add missing config symbols
+
+Signed-off-by: David Bauer <mail@david-bauer.net>
+---
+ target/linux/generic/config-5.10 | 12 ++++++++++++
+ target/linux/generic/config-5.4  |  1 +
+ 2 files changed, 13 insertions(+)
+
+diff --git a/target/linux/generic/config-5.10 b/target/linux/generic/config-5.10
+index b998ec8dca..13226c1bd6 100644
+--- a/target/linux/generic/config-5.10
++++ b/target/linux/generic/config-5.10
+@@ -1016,6 +1016,12 @@ CONFIG_CRYPTO_AES=y
+ # CONFIG_CRYPTO_AES_ARM is not set
+ # CONFIG_CRYPTO_AES_ARM_BS is not set
+ # CONFIG_CRYPTO_AES_ARM_CE is not set
++# CONFIG_CRYPTO_AES_ARM64 is not set
++# CONFIG_CRYPTO_AES_ARM64_BS is not set
++# CONFIG_CRYPTO_AES_ARM64_CE is not set
++# CONFIG_CRYPTO_AES_ARM64_CE_CCM is not set
++# CONFIG_CRYPTO_AES_ARM64_CE_BLK is not set
++# CONFIG_CRYPTO_AES_ARM64_NEON_BLK is not set
+ # CONFIG_CRYPTO_AES_NI_INTEL is not set
+ # CONFIG_CRYPTO_AES_TI is not set
+ CONFIG_CRYPTO_ALGAPI=y
+@@ -1045,6 +1051,7 @@ CONFIG_CRYPTO_ALGAPI2=y
+ # CONFIG_CRYPTO_CRC32C_INTEL is not set
+ # CONFIG_CRYPTO_CRC32_ARM_CE is not set
+ # CONFIG_CRYPTO_CRCT10DIF is not set
++# CONFIG_CRYPTO_CRCT10DIF_ARM64_CE is not set
+ # CONFIG_CRYPTO_CRYPTD is not set
+ # CONFIG_CRYPTO_CTR is not set
+ # CONFIG_CRYPTO_CTS is not set
+@@ -1103,6 +1110,7 @@ CONFIG_CRYPTO_ALGAPI2=y
+ # CONFIG_CRYPTO_GF128MUL is not set
+ # CONFIG_CRYPTO_GHASH is not set
+ # CONFIG_CRYPTO_GHASH_ARM_CE is not set
++# CONFIG_CRYPTO_GHASH_ARM64_CE is not set
+ # CONFIG_CRYPTO_GHASH_CLMUL_NI_INTEL is not set
+ # CONFIG_CRYPTO_HASH is not set
+ # CONFIG_CRYPTO_HMAC is not set
+@@ -1160,14 +1168,18 @@ CONFIG_CRYPTO_PCRYPT=y
+ # CONFIG_CRYPTO_SHA1 is not set
+ # CONFIG_CRYPTO_SHA1_ARM is not set
+ # CONFIG_CRYPTO_SHA1_ARM_CE is not set
++# CONFIG_CRYPTO_SHA1_ARM64_CE is not set
+ # CONFIG_CRYPTO_SHA1_ARM_NEON is not set
+ # CONFIG_CRYPTO_SHA256 is not set
+ # CONFIG_CRYPTO_SHA256_ARM is not set
++# CONFIG_CRYPTO_SHA256_ARM64 is not set
+ # CONFIG_CRYPTO_SHA2_ARM_CE is not set
++# CONFIG_CRYPTO_SHA2_ARM64_CE is not set
+ # CONFIG_CRYPTO_SHA3 is not set
+ # CONFIG_CRYPTO_SHA3_ARM64 is not set
+ # CONFIG_CRYPTO_SHA512 is not set
+ # CONFIG_CRYPTO_SHA512_ARM is not set
++# CONFIG_CRYPTO_SHA512_ARM64 is not set
+ # CONFIG_CRYPTO_SHA512_ARM64_CE is not set
+ # CONFIG_CRYPTO_SIMD is not set
+ CONFIG_CRYPTO_SKCIPHER=y
+diff --git a/target/linux/generic/config-5.4 b/target/linux/generic/config-5.4
+index baa26221c7..fd3da81213 100644
+--- a/target/linux/generic/config-5.4
++++ b/target/linux/generic/config-5.4
+@@ -6121,6 +6121,7 @@ CONFIG_USB_OHCI_LITTLE_ENDIAN=y
+ # CONFIG_USB_RENESAS_USBHS is not set
+ # CONFIG_USB_RIO500 is not set
+ # CONFIG_USB_ROLE_SWITCH is not set
++# CONFIG_USB_ROLES_INTEL_XHCI is not set
+ # CONFIG_USB_RTL8150 is not set
+ # CONFIG_USB_RTL8152 is not set
+ # CONFIG_USB_S2255 is not set
+-- 
+2.35.1
+
