@@ -26,25 +26,29 @@ function allow_client(ctx) {
 
 // log the client in via radius
 function auth_client(ctx) {
-	if (!ctx.query_string.username || !ctx.query_string.password) {
-		include('allow.uc', ctx);
-		return false;
-	}
-	let password = uam.password(uam.md5(config.uam.challenge, ctx.mac), ctx.query_string.password, config.uam.uam_secret);
-
-	let cfg = fs.open('/tmp/' + ctx.mac + '.json', 'w');
-	cfg.write({
-		type: 'uam-auth',
+	let password;
+	let payload = {
 		server: sprintf('%s:%s:%s',config.radius.auth_server, config.radius.auth_port, config.radius.auth_secret),
 		username: ctx.mac,
-		password,
 		acct_session: "0123456789",
 		client_ip: ctx.env.REMOTE_ADDR,
 		called_station: ctx.mac,
 		calling_station: config.uam.nasmac,
 		nas_ip: ctx.env.SERVER_ADDR,
 		nas_id: config.uam.nasid
-	});
+	};
+
+	if (ctx.query_string.username && ctx.query_string.password && ctx.query_string.challenge) {
+		payload.type = 'uam-chap-auth';
+		payload.chap_password = ctx.query_string.response;
+		payload.chap_challenge = uam.chap_challenge(config.uam.challenge, config.uam.uam_secret);
+	} else if (ctx.query_string.username && ctx.query_string.password) {
+		payload.type = 'uam-auth';
+		payload.password = uam.password(uam.md5(config.uam.challenge, ctx.mac), ctx.query_string.password, config.uam.uam_secret);
+	}
+
+	let cfg = fs.open('/tmp/' + ctx.mac + '.json', 'w');
+	cfg.write(payload);
 	cfg.close();
 
 	let stdout = fs.popen('/usr/bin/radius-client /tmp/' + ctx.mac + '.json');
