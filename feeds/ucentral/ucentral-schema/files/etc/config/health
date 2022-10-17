@@ -1,0 +1,5 @@
+config health config
+	option dhcp_local	1
+	option dhcp_remote	0
+	option dns_local	1
+	option dns_remote	1
