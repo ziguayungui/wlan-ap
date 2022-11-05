@@ -27,6 +27,17 @@ ath11k_generate_macs_eap101() {
 	echo -ne \\x${mac3//:/\\x} >> /lib/firmware/ath11k-macs
 }
 
+ath11k_generate_macs_redmi_ax5() {
+	touch /lib/firmware/ath11k-macs
+	eth=$(cat /sys/class/net/eth3/address)
+	mac1=$(macaddr_add $eth 5)
+	mac2=$(macaddr_add $eth 4)
+	mac3=00:00:00:00:00:00
+	echo -ne \\x${mac1//:/\\x} >> /lib/firmware/ath11k-macs
+	echo -ne \\x${mac2//:/\\x} >> /lib/firmware/ath11k-macs
+	echo -ne \\x${mac3//:/\\x} >> /lib/firmware/ath11k-macs
+}
+
 ath11k_generate_macs_wf194() {
 	touch /lib/firmware/ath11k-macs
 	mac=$(grep BaseMacAddress= /dev/mtd14 | cut -dx -f2)
@@ -113,6 +124,7 @@ case "$FIRMWARE" in
 	qcom,ipq6018-cp03|\
 	qcom,ipq6018-cp01|\
 	xiaomi,ax1800|\
+	xiaomi,redmi-ax5|\
 	glinet,ax1800|\
 	plasmacloud,pax1800-v1|\
 	plasmacloud,pax1800-v2)

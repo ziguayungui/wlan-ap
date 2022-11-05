@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+
+# SPDX-License-Identifier: GPL-2.0-only
+
+START=11
+
+setmac() {
+	DEVICENAME=$1
+	mac=$(cat /etc/board.json | jsonfilter -e '@["network_device"]["'$DEVICENAME'"]'.macaddr)
+	[ -n "$mac" ] && (ip link set $DEVICENAME down && ip link set $DEVICENAME address $mac)
+}
+
+boot() {
+	case $(board_name) in
+	xiaomi,redmi-ax5)
+		for num in $(seq 0 3); do
+			setmac "eth$num"
+		done
+		;;
+	esac
+}

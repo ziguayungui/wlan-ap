@@ -1,0 +1,27 @@
+. /lib/functions.sh
+
+reduce_cert_part_size() {
+        case $(board_name) in
+        xiaomi,redmi-ax5)
+                echo "reduce certificates partition size" > /dev/kmsg
+                ;;
+        *)
+                return
+                ;;
+        esac
+
+        grep certificates /proc/mtd > /dev/null
+        [ $? -eq 0 ] && return
+
+        ls /dev/ubi0 > /dev/null
+        [ $? -eq 0 ] || return
+
+        ubinfo /dev/ubi0 -N certificates > /dev/null
+        [ $? -eq 0 ] || {
+                rootfs_data_size=$(ubinfo -d 0 -N rootfs_data | grep "Size:" | awk '{print $2}')
+                ubirsvol /dev/ubi0 -N rootfs_data -S $((rootfs_data_size - 20))
+                ubimkvol /dev/ubi0 -N certificates -S 20
+        }
+}
+
+boot_hook_add preinit_main reduce_cert_part_size

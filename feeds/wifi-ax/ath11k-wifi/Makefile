@@ -45,6 +45,7 @@ ALLWIFIBOARDS:= \
 	wallys-dr6018-v4 \
 	tplink-ex227 \
 	tplink-ex447 \
+	xiaomi-redmi-ax5 \
 	yuncore-ax840 \
 	meshpp-s618
 
@@ -250,6 +251,7 @@ $(eval $(call generate-ath11k-wifi-package,indio-um-510axp-v1,Indio UM-510AXP V1
 $(eval $(call generate-ath11k-wifi-package,indio-um-510axm-v1,Indio UM-510AXM V1))
 $(eval $(call generate-ath11k-wifi-package,tplink-ex227,TP-Link EX227))
 $(eval $(call generate-ath11k-wifi-package,tplink-ex447,TP-Link EX447))
+$(eval $(call generate-ath11k-wifi-package,xiaomi-redmi-ax5,XIAOMI REDMI AX5))
 $(eval $(call generate-ath11k-wifi-package,yuncore-ax840,YunCore AX840))
 $(eval $(call generate-ath11k-wifi-package,meshpp-s618,Mesh++ S618))
 

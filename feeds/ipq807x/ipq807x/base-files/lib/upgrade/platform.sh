@@ -92,6 +92,7 @@ platform_check_image() {
 	plasmacloud,pax1800-v2|\
 	tplink,ex227|\
 	tplink,ex447|\
+	xiaomi,redmi-ax5|\
 	yuncore,ax840|\
 	motorola,q14|\
 	qcom,ipq6018-cp01|\
@@ -133,6 +134,7 @@ platform_do_upgrade() {
 	qcom,ipq5018-mp03.3|\
 	wallys,dr6018|\
 	wallys,dr6018-v4|\
+	xiaomi,redmi-ax5|\
 	yuncore,ax840|\
 	tplink,ex447|\
 	tplink,ex227|\

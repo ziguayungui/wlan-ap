@@ -109,6 +109,17 @@ define Device/glinet_axt1800
 endef
 TARGET_DEVICES += glinet_axt1800
 
+define Device/xiaomi_redmi-ax5
+  DEVICE_TITLE := Xiaomi Redmi AX5
+  DEVICE_DTS := qcom-ipq6018-xiaomi-redmi-ax5
+  DEVICE_DTS_CONFIG := config@cp03-c1
+  SUPPORTED_DEVICES := xiaomi,redmi-ax5
+  DEVICE_PACKAGES := ath11k-wifi-xiaomi-redmi-ax5 uboot-envtools
+  IMAGES +=nand-factory.ubi
+  IMAGE/nand-factory.ubi := append-ubi
+endef
+TARGET_DEVICES += xiaomi_redmi-ax5
+
 define Device/yuncore_ax840
   DEVICE_TITLE := YunCore AX840
   DEVICE_DTS := qcom-ipq6018-yuncore-ax840
