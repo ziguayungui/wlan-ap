@@ -1,0 +1,8 @@
+---
+profile: friendlyarm_nanopi-r2s
+target: rockchip
+subtarget: armv8
+description: Build image for the friendlyarm nanopi-r2s
+image: bin/targets/rockchip/armv8/openwrt-rockchip-armv8-friendlyarm_nanopi-r2s-squashfs-sysupgrade.img.gz
+include:
+  - ucentral-ap
