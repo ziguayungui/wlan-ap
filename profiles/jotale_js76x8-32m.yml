@@ -1,0 +1,8 @@
+---
+profile: jotale_js76x8-32m
+target: ramips
+subtarget: mt76x8
+description: Build image for the jotale js7628
+image: bin/targets/ramips/mt76x8/openwrt-ramips-mt76x8-jotale_js76x8-32m-squashfs-sysupgrade.bin
+include:
+  - ucentral-ap

@@ -1,0 +1,25 @@
+From 1fc2b501f1110997e1c066edb10f82736d4cf21a Mon Sep 17 00:00:00 2001
+From: ziguayungui <244753440@qq.com>
+Date: Sat, 12 Nov 2022 10:47:36 +0800
+Subject: [PATCH] ramips/mt76x8:change jotale_js76x8 board default network config
+
+---
+ target/linux/ramips/mt76x8/base-files/etc/board.d/02_network | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/target/linux/ramips/mt76x8/base-files/etc/board.d/02_network b/target/linux/ramips/mt76x8/base-files/etc/board.d/02_network
+index 7fc69ac8b2..8b7610fe56 100755
+--- a/target/linux/ramips/mt76x8/base-files/etc/board.d/02_network
++++ b/target/linux/ramips/mt76x8/base-files/etc/board.d/02_network
+@@ -106,7 +106,7 @@ ramips_setup_interfaces()
+ 	jotale,js76x8-16m|\
+ 	jotale,js76x8-32m)
+ 		ucidef_add_switch "switch0" \
+-			"0:lan" "1:lan" "2:lan" "6@eth0"
++			"0:wan" "1:lan" "2:lan" "6@eth0"
+ 		;;
+ 	netgear,r6020|\
+ 	netgear,r6080|\
+-- 
+2.25.1
+
