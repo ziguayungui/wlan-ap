@@ -1,0 +1,8 @@
+---
+profile: zbtlink_zbt-wg3526-16m
+target: ramips
+subtarget: mt7621
+description: Build image for the zbtlink zbt-wg3526-16m
+image: bin/targets/ramips/mt7621/openwrt-ramips-mt7621-zbtlink_zbt-wg3526-16m-squashfs-sysupgrade.bin
+include:
+  - ucentral-ap
