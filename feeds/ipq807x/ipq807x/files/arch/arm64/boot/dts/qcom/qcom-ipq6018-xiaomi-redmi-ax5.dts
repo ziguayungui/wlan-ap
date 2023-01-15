@@ -38,10 +38,10 @@
 		ethernet3 = "/soc/dp4";
 		ethernet4 = "/soc/dp5";
 
-		led-boot = &led_system;
-		led-failsafe = &led_blue;
-		led-running = &led_blue;
-		led-upgrade = &led_system;
+		led-boot = &led_sys_yellow;
+		led-failsafe = &led_sys_blue;
+		led-running = &led_sys_blue;
+		led-upgrade = &led_sys_yellow;
 	};
 
 	chosen {
@@ -317,7 +317,7 @@
 		pinctrl-0 = <&leds_pins>;
 		pinctrl-names = "default";
 
-		led_sys_yellow {
+		led_sys_yellow: led_sys_yellow {
 			label = "yellow:status";
 			default-state = "off";
 			gpio = <&tlmm 0x1e GPIO_ACTIVE_HIGH>;
@@ -329,7 +329,7 @@
 			gpio = <&tlmm 0x20 GPIO_ACTIVE_HIGH>;
 		};
 
-		led_system: led_sys_blue {
+		led_sys_blue: led_sys_blue {
 			label = "blue:status";
 			default-state = "on";
 			gpio = <&tlmm 0x1d GPIO_ACTIVE_HIGH>;
