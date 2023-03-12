@@ -1,4 +1,4 @@
-repo:  https://github.com/openwrt/openwrt.git
+repo:  https://gitee.com/wlan-ap/openwrt.git
 branch: openwrt-21.02
 revision: c67509efd7d0c43eb3f622f06c8a31aa28d22f6e
 output_dir: ./output

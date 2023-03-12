@@ -18,6 +18,9 @@ else
 	echo "### OpenWrt repo already setup"
 fi
 
+sed -i "s= [a-z]*:.*/project= https://gitee.com/wlan-ap=g" openwrt/feeds.conf.default || true
+sed -i "s= [a-z]*:.*/feed= https://gitee.com/wlan-ap=g" openwrt/feeds.conf.default || true
+
 cd ${BUILD_DIR}
 ./scripts/gen_config.py ${TARGET} || exit 1
 cd -
