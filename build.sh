@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+#set -ex
 ROOT_PATH=${PWD}
 BUILD_DIR=${ROOT_PATH}/openwrt
 TARGET=${1}
@@ -21,6 +21,8 @@ fi
 sed -i "s= [a-z]*:.*/project= https://gitee.com/wlan-ap=g" openwrt/feeds.conf.default || true
 sed -i "s= [a-z]*:.*/feed= https://gitee.com/wlan-ap=g" openwrt/feeds.conf.default || true
 
+[ ! -f ${BUILD_DIR}/scripts/gen_config.py ] && cp ${ROOT_PATH}/scripts/gen_config.py ${BUILD_DIR}/scripts/gen_config.py
+cp ${ROOT_PATH}/scripts/feeds ${BUILD_DIR}/scripts/feeds
 cd ${BUILD_DIR}
 ./scripts/gen_config.py ${TARGET} || exit 1
 cd -

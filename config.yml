@@ -1,16 +1,4 @@
 repo:  https://gitee.com/wlan-ap/openwrt.git
 branch: openwrt-21.02
-revision: c67509efd7d0c43eb3f622f06c8a31aa28d22f6e
+revision: ea34ce11c17c6df046effd65a674f79034b124ab
 output_dir: ./output
-
-patch_folders:
-  - patches/backports/
-  - patches/base
-  - patches/wifi
-  - patches/ath79
-  - patches/ramips
-  - patches/ipq40xx
-  - patches/ipq806x
-  - patches/ipq807x
-  - patches/rtkmipsel
-  - patches/rest
