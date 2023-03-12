@@ -10,9 +10,19 @@ packages:
   - luci
   - luci-base
   - luci-compat
+  - libustream-openssl
+  - luci-ssl-openssl
   - uhttpd
   - uhttpd-mod-ubus
   - dnsmasq-full
+  - ttyd
+  - luci-app-ttyd
+  - ip-full
+  - ipset
+  - iperf3
+  - sysstat
+  - strace
+  - tcpdump
 
 diffconfig: |
   CONFIG_OPENSSL_ENGINE=y
