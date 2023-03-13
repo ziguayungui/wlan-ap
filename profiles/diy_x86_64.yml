@@ -5,6 +5,10 @@ subtarget: 64
 description: Build image for diy x86_64
 image: bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined.img.gz
 
+feeds:
+  - name: diy
+    path: ../../feeds/diy
+
 packages:
   - cgi-io
   - luci
@@ -54,3 +58,4 @@ diffconfig: |
   CONFIG_IMAGEOPT=y
   CONFIG_VERSIONOPT=y
   # CONFIG_VERSION_FILENAMES is not set
+  # CONFIG_FEED_diy is not set
