@@ -1,0 +1,1 @@
+obj-${CONFIG_EXAMPLE_KERNEL_PACKAGE}	+= example_kernel_package.o

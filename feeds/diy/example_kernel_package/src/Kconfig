@@ -1,0 +1,2 @@
+config EXAMPLE_KERNEL_PACKAGE
+	tristate "Example Kernel package"
