@@ -101,6 +101,7 @@ module_init(netfilter_hook_init);
 
 static void __exit netfilter_hook_exit(void)
 {
+    nf_unregister_net_hooks(&init_net, hook_ops, ARRAY_SIZE(hook_ops));
 	printk("#exit netfilter hook.....ok\n");
 }
 module_exit(netfilter_hook_exit);
