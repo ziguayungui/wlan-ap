@@ -27,6 +27,7 @@ packages:
   - sysstat
   - strace
   - tcpdump
+  - ip-bridge
 
 diffconfig: |
   CONFIG_OPENSSL_ENGINE=y

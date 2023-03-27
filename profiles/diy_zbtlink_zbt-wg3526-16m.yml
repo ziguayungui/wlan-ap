@@ -27,6 +27,9 @@ packages:
   - sysstat
   - strace
   - tcpdump
+  - ip-bridge
+  - wpad-openssl
+  - kmod-mt76
 
 diffconfig: |
   CONFIG_OPENSSL_ENGINE=y
