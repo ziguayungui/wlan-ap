@@ -1,0 +1,1 @@
+obj-${CONFIG_ICMP_FILTER}	+= icmp_filter.o
