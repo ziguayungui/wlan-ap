@@ -1,0 +1,1 @@
+obj-${CONFIG_IP_FILTER}	+= ip_filter.o
