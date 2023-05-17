@@ -1,0 +1,180 @@
+#!/usr/bin/lua
+
+local nixio = require "nixio"
+local uloop = require "uloop"
+local util = require "luci.util"
+local uci = require("luci.model.uci").cursor()
+
+local ServiceName = "SoftPwmFan"
+
+--[[ 
+    1. 标准模式
+        在监测点温度低于 20℃ 时， 风扇默认以 20% 的平均功耗运行；
+            y=20
+        在监测点温度范围为 20-45℃ 内，风扇的平均功耗会随着温度的变化而线性变化；
+            y=0.8x+4
+        在监测点温度范围为 45-65℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 20-45℃ 范围内的转速变化更明显；
+            y=1.5x-27.5
+        在监测点温度范围为 65-70℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 45-65℃ 范围内的转速变化更明显；
+            y=6x-320
+        在监测点温度超过 70℃ 时， 风扇默认以 100% 的平均功耗运行（即满速运行）；
+            y=100
+    2. 安静模式
+        在监测点温度低于 30℃ 时， 风扇默认以 20% 的平均功耗运行；
+            y=20
+        在监测点温度范围为 30-50℃ 内，风扇的平均功耗会随着温度的变化而线性变化；
+            y=x-10
+        在监测点温度范围为 50-70℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 30-50℃ 范围内的转速变化更明显；
+            y=1.5x-35
+        在监测点温度范围为 70-75℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 50-70℃ 范围内的转速变化更明显；
+            y=6x-350
+        在监测点温度超过 75℃ 时， 风扇默认以 100% 的平均功耗运行（即满速运行）；
+            y=100
+    3. 强劲模式
+        在监测点温度低于 20℃ 时， 风扇默认以 30% 的平均功耗运行；
+            y=30
+        在监测点温度范围为 20-40℃ 内，风扇的平均功耗会随着温度的变化而线性变化；
+            y=0.75+15
+        在监测点温度范围为 40-55℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 20-40℃ 范围内的转速变化更明显；
+            y=2x-40 （为了方便计算，将40度时的45%调整为40%）
+        在监测点温度范围为 55-60℃ 内，风扇的平均功耗会随着温度的变化而线性变化，但变化幅度相较于前面 40-55℃ 范围内的转速变化更明显；
+            y=6x-260
+        在监测点温度超过 60℃ 时， 风扇默认以 100% 的平均功耗运行（即满速运行）；
+            y=100   
+    4. 全速模式
+        全速模式无多余的转折点，意味着此时无论监测点的温度是多少，风扇均会以 100% 平均功耗运行，即全程满速运行。
+            y=100
+]] --
+local pwm_fan_work_mode = '2'
+local thermal_core_path = ""
+local control_pwm_fan_path = ""
+
+local timer_update_pwm_fan=nil
+local timer_update_pwm_fan_interval=(1000*10)
+
+local function file_exists(path)
+    local file = io.open(path, "rb")
+    if file then file:close();return true end
+    return false
+end
+
+local pwm_table={
+    0,   2,   5,   7,   10,  13,  15,  18,  21, 23,
+    26,  29,  31,  34,  37,  39,  42,  44,  47, 50,
+    52,  55,  58,  60,  63,  65,  68,  71,  73, 76,
+    78,  81,  84,  86,  89,  91,  94,  96,  99, 101, 
+    104, 107, 109, 112, 114, 117, 119, 122, 124, 127, 
+    130, 132, 135, 137, 140, 142, 145, 147, 150, 152,
+    155, 158, 160, 163, 165, 168, 170, 173, 175, 178, 
+    181, 183, 186, 188, 191, 193, 196, 198, 201, 204, 
+    206, 209, 211, 214, 216, 219, 221, 224, 227, 229, 
+    232, 234, 237, 239, 242, 244 ,247, 250, 252, 255
+};
+
+-- 返回值： 风扇转速值 0-255
+local function soft_pwm_fan_adjustment(work_mode, current_thermal)
+    local pwm_value = 20
+    if work_mode == '1' then
+        if current_thermal <= 20 then
+            pwm_value = 20
+        elseif current_thermal > 20 and current_thermal<=45 then
+            pwm_value = 0.8 * current_thermal + 4
+        elseif current_thermal > 45 and current_thermal<=65 then
+            pwm_value = 1.5 * current_thermal - 27.5
+        elseif current_thermal > 65 and current_thermal<=70 then
+            pwm_value = 6 * current_thermal - 320
+        elseif current_thermal > 70 then
+            pwm_value = 100
+        end
+    elseif work_mode == '2' then
+        if current_thermal <= 30 then
+            pwm_value = 20
+        elseif current_thermal > 30 and current_thermal<=50 then
+            pwm_value = current_thermal -10
+        elseif current_thermal > 50 and current_thermal<=70 then
+            pwm_value = 1.5 * current_thermal - 35
+        elseif current_thermal > 70 and current_thermal<=75 then
+            pwm_value = 6 * current_thermal - 350
+        elseif current_thermal > 75 then
+            pwm_value = 100
+        end
+    elseif work_mode == '3' then
+        if current_thermal <= 20 then
+            pwm_value = 30
+        elseif current_thermal > 20 and current_thermal<=40 then
+            pwm_value = 0.75 * current_thermal + 15
+        elseif current_thermal > 40 and current_thermal<=55 then
+            pwm_value = 2 * current_thermal - 40
+        elseif current_thermal > 55 and current_thermal<=60 then
+            pwm_value = 6 * current_thermal - 260
+        elseif current_thermal > 60 then
+            pwm_value = 100
+        end
+    elseif work_mode == '4' then
+        pwm_value = 100
+    end
+    -- 去除小数
+    pwm_value = math.modf(pwm_value)
+    return pwm_table[pwm_value]
+end
+
+local function func_update_pwm_fan_state()
+    -- 读取当前温度
+    local current_thermal = tonumber(util.exec("cat "..thermal_core_path) or "20000")
+    current_thermal = math.modf(current_thermal/1000)
+    -- nixio.syslog("debug", "current thermal:"..current_thermal)
+    local fan_value = soft_pwm_fan_adjustment(pwm_fan_work_mode, current_thermal)
+    -- nixio.syslog("debug", "fan value:"..fan_value)
+    util.exec("echo "..fan_value.." > "..control_pwm_fan_path)
+    if timer_update_pwm_fan ~= nil then
+        timer_update_pwm_fan:set(timer_update_pwm_fan_interval)
+    end
+end
+
+local function func_init_global_config()
+    if file_exists("/etc/config/softpwmfan") == true then
+        pwm_fan_work_mode = uci:get("softpwmfan", "@global[0]", "mode") or "2"
+        thermal_core_path = uci:get("softpwmfan", "@global[0]", "thermal") or "/sys/class/hwmon/hwmon0/temp1_input"
+        control_pwm_fan_path = uci:get("softpwmfan", "@global[0]", "pwm") or "/sys/class/hwmon/hwmon2/pwm1"
+        nixio.syslog("debug", "pwm fan work mode:"..pwm_fan_work_mode)
+        nixio.syslog("debug", "thermal core path:"..thermal_core_path)
+        nixio.syslog("debug", "control pwm fan path:"..control_pwm_fan_path)
+    else
+        os.execute("touch /etc/config/softpwmfan")
+        local section = uci:add("softpwmfan", "global")
+        uci:set("softpwmfan", section, "mode", '2')
+        uci:set("softpwmfan", section, "thermal", "/sys/class/hwmon/hwmon0/temp1_input")
+        uci:set("softpwmfan", section, "pwm", "/sys/class/hwmon/hwmon2/pwm1")
+        uci:commit("softpwmfan")
+        pwm_fan_work_mode = '2'
+        thermal_core_path = "/sys/class/hwmon/hwmon0/temp1_input"
+        control_pwm_fan_path = "/sys/class/hwmon/hwmon2/pwm1"
+    end
+
+    if file_exists(thermal_core_path) == false or file_exists(control_pwm_fan_path) == false then
+        nixio.syslog("err", "thermal or control_pwm_fan  path not exist!!!")
+        return false
+    end
+    return true
+end
+
+function SoftPwmFan_main()
+    uloop.init()
+    -- init config
+    if func_init_global_config() == true then
+        timer_update_pwm_fan = uloop.timer(func_update_pwm_fan_state, timer_update_pwm_fan_interval)
+        uloop.run()
+        if timer_update_pwm_fan ~= nil then
+            timer_update_pwm_fan:cancel()
+        end
+    end
+end
+
+local function recordErrMsg(error_msg)
+    nixio.openlog(ServiceName)
+    print("lua:" .. error_msg .. "\n" .. debug.traceback())
+    nixio.closelog()
+end
+
+--开始运行
+xpcall(SoftPwmFan_main, recordErrMsg)
